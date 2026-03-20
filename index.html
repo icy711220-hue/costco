@@ -1340,14 +1340,19 @@
 
         const initLiff = async () => {
           loadingProgress.value = 10; loadingText.value = '登入 LINE 驗證...';
+          const liffObj = getLiff();
+          if (!liffObj) {
+            // LIFF SDK 未載入（非 LINE 環境或 CDN 失敗）
+            isGuest.value = true; showGuestPopup.value = true; loadData(); return;
+          }
           try {
-            await liff.init({ liffId: "2009521621-rw3SYhn3" });
-            if (!liff.isLoggedIn()) {
-              if (liff.isInClient()) { liff.login(); return; }
+            await liffObj.init({ liffId: "2009521621-rw3SYhn3" });
+            if (!liffObj.isLoggedIn()) {
+              if (liffObj.isInClient()) { liffObj.login(); return; }
               else { isGuest.value = true; showGuestPopup.value = true; loadData(); return; }
             }
-            const profile = await liff.getProfile();
-            const email = liff.getDecodedIDToken()?.email || '';
+            const profile = await liffObj.getProfile();
+            const email = liffObj.getDecodedIDToken()?.email || '';
             liffProfile.value = { ...profile, email };
             loadData();
           } catch (err) {
@@ -1935,19 +1940,35 @@
         const getStatusColor = (status) => ({ '待匯款':'text-red-500','已匯款待確認':'text-blue-500','處理中':'text-yellow-600','已出貨':'text-green-500','已完成':'text-gray-400','已取消':'text-gray-300','退貨處理中':'text-orange-500' }[status] || 'text-gray-800');
         const copyText = (text) => {
           navigator.clipboard.writeText(text).then(() => {
-            sysAlert.value = { show: true, title: '複製成功', message: '已複製至剪貼簿！', type: 'success', showCancel: false };
-            setTimeout(() => { if(sysAlert.value.show) sysAlert.value.show = false; }, 1500);
+            if (sysAlert.value) {
+              sysAlert.value = { show: true, title: '複製成功', message: '已複製至剪貼簿！', type: 'success', showCancel: false, resolve: null };
+              setTimeout(() => { if(sysAlert.value && sysAlert.value.show) sysAlert.value.show = false; }, 1500);
+            }
           });
         };
 
-        // ✅ 5. 分享商城
+        // ✅ 安全取得 liff（避免 liff is not defined）
+        const getLiff = () => { try { return (typeof liff !== 'undefined') ? liff : null; } catch(e) { return null; } };
+
+        // ✅ 5. 試算表資料保護（補上遺漏的定義）
+        const protectSensitiveSheets = () => withBtnLock('protect', async () => {
+          const confirmed = await showAlert('資料保護', '確定要對「會員列表」和「訂單紀錄」設定保護嗎？設定後僅擁有者可直接查看試算表。', 'info', true);
+          if (!confirmed) return;
+          try {
+            await callAPI('protectSheets', { admin: user.value.name });
+            await showAlert('保護設定完成', '✅ 會員列表與訂單紀錄已設定保護！\n\n系統仍可正常讀取寫入，但在試算表介面中其他人將看不到內容。', 'success');
+          } catch(e) {}
+        });
+
+        // ✅ 5. 分享商城（加 liff guard）
         const shareShop = async () => {
           const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
           const shopLineUrl = 'https://lin.ee/Vujm2et';
           const shareText = `我發現一個好事多會發生代購網站，非常棒喔，推薦給你。${shopLineUrl}`;
-          if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+          const liffObj = getLiff();
+          if (liffObj && liffObj.isApiAvailable && liffObj.isApiAvailable('shareTargetPicker')) {
             try {
-              await liff.shareTargetPicker([{
+              await liffObj.shareTargetPicker([{
                 type: 'flex',
                 altText: `推薦你加入 ${shopName}！${shopLineUrl}`,
                 contents: {
@@ -1973,9 +1994,10 @@
               return;
             } catch(e) {}
           }
-          // 降級
           const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
-          if (liff.isInClient()) { try { liff.openWindow({ url: lineShareUrl, external: false }); return; } catch(e) {} }
+          if (liffObj && liffObj.isInClient && liffObj.isInClient()) {
+            try { liffObj.openWindow({ url: lineShareUrl, external: false }); return; } catch(e) {}
+          }
           if (navigator.share) { try { await navigator.share({ title: shopName, text: shareText }); return; } catch(e) {} }
           copyText(shareText);
           showAlert('已複製', '請手動貼給好友！', 'info');
