@@ -3,13 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>好事多會發生代購系統 V7.2</title>
+  <title>好事多會發生代購系統 V7.3</title>
+  <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- LIFF SDK -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <!-- Chart.js - 固定版本 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ✅ 字體縮放 CSS 變數 */
     :root { --font-scale: 1; }
@@ -2003,7 +2009,11 @@
       }
     });
 
-    app.config.errorHandler = (err) => { console.error(err); document.getElementById('fallback-error').style.display = 'block'; };
+    app.config.errorHandler = (err, instance, info) => {
+      console.error('Vue Error:', err, info);
+      document.getElementById('fallback-error').style.display = 'block';
+    };
+    app.config.warnHandler = (msg) => { console.warn('Vue Warning:', msg); };
     app.mount('#app');
   </script>
 </body>
