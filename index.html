@@ -96,9 +96,12 @@
 
     <!-- Header -->
     <header v-show="!loading" class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
-      <h1 class="text-xl font-bold">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.2</span></h1>
-      <div class="flex items-center gap-2">
-        <!-- ✅ 3. 字體大小切換按鈕 -->
+      <!-- ✅ 3. 點標題重整，左邊加購物車圖示 -->
+      <div @click="reloadPage" class="flex items-center gap-2 cursor-pointer select-none active:opacity-70 flex-1 min-w-0">
+        <i class="fa-solid fa-cart-shopping text-lg flex-shrink-0" :class="isReloading ? 'fa-spin text-yellow-300' : 'text-white opacity-90'"></i>
+        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.3</span></h1>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
         <button @click="cycleFontSize" class="text-white opacity-80 hover:opacity-100 text-xs bg-white bg-opacity-20 px-2 py-1 rounded flex items-center gap-1" title="切換字體大小">
           <i class="fa-solid fa-text-height"></i>
           <span>{{ fontSizeLabel }}</span>
@@ -108,10 +111,12 @@
       </div>
     </header>
 
-    <!-- 跑馬燈 -->
-    <div v-if="!loading && adminSettings['跑馬燈文字']" class="marquee-container sticky top-[60px] z-40 shadow-sm">
+    <!-- ✅ 5. 多組跑馬燈輪播 -->
+    <div v-if="!loading && marqueeLines.length > 0" class="marquee-container sticky top-[60px] z-40 shadow-sm">
       <i class="fa-solid fa-bullhorn mx-2 flex-shrink-0"></i>
-      <div class="marquee-content" :style="{ animationDuration: (adminSettings['跑馬燈速度'] || 10) + 's' }">{{ adminSettings['跑馬燈文字'] }}</div>
+      <div class="marquee-content" :style="{ animationDuration: (adminSettings['跑馬燈速度'] || 12) + 's' }">
+        <span v-for="(line, i) in marqueeLines" :key="i">{{ line }}&nbsp;&nbsp;｜&nbsp;&nbsp;</span>
+      </div>
     </div>
 
     <main v-show="!loading" class="p-3">
@@ -301,9 +306,11 @@
 
       <!-- 訂單頁 -->
       <div v-show="currentTab === 'orders'">
-        <!-- ✅ 7. 加入已完成篩選 -->
+        <!-- ✅ 6. 已匯款待確認併入處理中篩選 -->
         <div class="flex gap-2 mb-4 overflow-x-auto hide-scrollbar pb-2">
-          <button v-for="f in ['全部','待匯款','處理中','已出貨','已完成']" :key="f" @click="orderFilter = f" :class="orderFilter===f?'bg-blue-600 text-white':'bg-white text-gray-600 border'" class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">{{ f }}</button>
+          <button v-for="f in ['全部','待匯款','處理中','已出貨','已完成']" :key="f" @click="orderFilter = f" :class="orderFilter===f?'bg-blue-600 text-white':'bg-white text-gray-600 border'" class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">
+            {{ f === '處理中' ? '處理中/已匯款' : f }}
+          </button>
         </div>
         <div v-if="filteredUserOrders.length === 0" class="text-center text-gray-500 mt-10">
           <i class="fa-solid fa-box-open text-4xl mb-3 text-gray-300"></i><p>尚無訂單紀錄</p>
@@ -669,10 +676,15 @@
             <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">需審核金額門檻</label><input v-model="adminSettings['需審核金額門檻']" type="number" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
             <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">爬蟲過濾最高金額</label><input v-model="adminSettings['過濾最高金額']" type="number" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">爬蟲過濾關鍵字(逗號分隔)</label><input v-model="adminSettings['過濾關鍵字']" type="text" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
-            <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">銀行匯款帳號</label><textarea v-model="adminSettings['銀行帳號']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-16 resize-none font-mono"></textarea></div>
+            <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">配送說明（顯示於商品詳情）</label><textarea v-model="adminSettings['配送說明']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-16 resize-none" placeholder="例：本商品預計完成匯款後 3-5 個工作天寄送出貨，送達時間依好市多配送時間。"></textarea></div>
+            <div><label class="block text-xs text-gray-500 mb-1 font-bold">銀行匯款帳號</label><textarea v-model="adminSettings['銀行帳號']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-16 resize-none font-mono"></textarea></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">會員註冊需知</label><textarea v-model="adminSettings['會員註冊需知']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-32 resize-none"></textarea></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">結帳購買需知條款</label><textarea v-model="adminSettings['購買需知']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-20 resize-none"></textarea></div>
-            <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">跑馬燈宣傳文字</label><input v-model="adminSettings['跑馬燈文字']" type="text" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
+            <div class="border-t border-gray-100 pt-3 mt-3">
+              <label class="block text-xs text-gray-500 mb-1 font-bold">跑馬燈宣傳文字（每行一組，多組輪流顯示）</label>
+              <textarea v-model="adminSettings['跑馬燈文字']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-20 resize-none" placeholder="第一組宣傳文字&#10;第二組宣傳文字&#10;第三組宣傳文字"></textarea>
+              <p class="text-[10px] text-gray-400 mt-1">每行一條，最多可設定數十組，自動輪播</p>
+            </div>
             <button @click="saveAdminSettings" :disabled="isBtnLoading.saveSettings" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg mt-2 text-sm font-bold shadow disabled:opacity-50">儲存所有設置</button>
           </div>
         </div>
@@ -699,11 +711,35 @@
       </div>
     </div>
 
-    <!-- 發貨 Modal -->
+    <!-- ✅ 4. 發貨 Modal - 改為手動/自動推播選擇 -->
     <div v-if="showShippingModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
-      <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl relative">
-        <h3 class="font-bold text-lg mb-4 border-b pb-2 text-gray-800">輸入物流單號</h3>
-        <input v-model="shippingTrackingCode" type="text" placeholder="例如：黑貓單號..." class="w-full border rounded p-3 text-sm bg-gray-50 font-mono mb-4">
+      <div class="bg-white rounded-xl p-5 w-full max-w-sm shadow-2xl relative">
+        <h3 class="font-bold text-lg mb-3 border-b pb-2 text-gray-800"><i class="fa-solid fa-truck mr-2 text-green-600"></i>發貨通知</h3>
+        <div class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1.5 font-bold">物流單號</label>
+          <input v-model="shippingTrackingCode" type="text" placeholder="例如：黑貓單號..." class="w-full border rounded p-3 text-sm bg-gray-50 font-mono">
+        </div>
+        <div class="mb-3 bg-gray-50 border border-gray-200 rounded p-3">
+          <p class="text-xs font-bold text-gray-700 mb-2"><i class="fa-solid fa-bell mr-1 text-blue-500"></i>通知方式</p>
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center gap-2 cursor-pointer bg-white border rounded p-2" :class="shipNotifyMode==='auto'?'border-blue-400 bg-blue-50':''">
+              <input type="radio" v-model="shipNotifyMode" value="auto" class="text-blue-600">
+              <div><p class="text-xs font-bold text-gray-700">系統推播</p><p class="text-[10px] text-gray-400">自動 LINE 通知買家</p></div>
+            </label>
+            <label class="flex-1 flex items-center gap-2 cursor-pointer bg-white border rounded p-2" :class="shipNotifyMode==='manual'?'border-orange-400 bg-orange-50':''">
+              <input type="radio" v-model="shipNotifyMode" value="manual" class="text-orange-600">
+              <div><p class="text-xs font-bold text-gray-700">手動複製</p><p class="text-[10px] text-gray-400">複製後自行傳送</p></div>
+            </label>
+          </div>
+        </div>
+        <!-- 手動複製發貨訊息 -->
+        <div v-if="shipNotifyMode==='manual'" class="mb-3 bg-orange-50 border border-orange-200 rounded p-3">
+          <p class="text-xs font-bold text-orange-700 mb-2">發貨訊息（點下方複製）</p>
+          <p class="text-xs text-gray-700 whitespace-pre-line leading-relaxed bg-white border rounded p-2 font-mono" id="shipMsgBox">{{ shipMessage }}</p>
+          <button @click="copyShipMessage" class="mt-2 w-full bg-orange-500 text-white py-2 rounded text-xs font-bold hover:bg-orange-600">
+            <i class="fa-regular fa-copy mr-1"></i>複製發貨訊息
+          </button>
+        </div>
         <div class="flex gap-3">
           <button @click="showShippingModal = false" class="flex-1 bg-gray-100 py-2 rounded-lg font-bold text-gray-600">取消</button>
           <button @click="confirmShipOrder" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold">確認發貨</button>
@@ -729,11 +765,29 @@
           <button @click="detailTab='specs'" :class="detailTab==='specs'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-3 text-[13px]">規格與配送</button>
           <button @click="detailTab='reviews'" :class="detailTab==='reviews'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-3 text-[13px]">買家評價</button>
         </div>
-        <div class="p-4 overflow-y-auto flex-1 text-sm text-gray-700 bg-white">
+        <!-- ✅ 1. 商品詳情字體大小控制 + 分享按鈕 -->
+        <div class="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-b border-gray-100 flex-shrink-0">
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] text-gray-400 mr-1">字體</span>
+            <button @click="detailFontSize = Math.max(11, detailFontSize - 2)" class="text-[11px] bg-white border border-gray-200 w-6 h-6 rounded flex items-center justify-center font-bold text-gray-600 hover:bg-gray-100">A-</button>
+            <button @click="detailFontSize = Math.min(22, detailFontSize + 2)" class="text-[11px] bg-white border border-gray-200 w-6 h-6 rounded flex items-center justify-center font-bold text-gray-600 hover:bg-gray-100">A+</button>
+          </div>
+          <button @click="shareProduct(selectedProduct)" class="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-sm">
+            <i class="fa-solid fa-share-nodes"></i> 分享給好友
+          </button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1 text-gray-700 bg-white" :style="'font-size:'+detailFontSize+'px; line-height:1.7'">
           <div v-show="detailTab==='desc'" class="costco-html"><p v-html="selectedProduct?.description||'目前無詳細介紹。'"></p></div>
           <div v-show="detailTab==='specs'">
-            <div v-if="selectedProduct?.specs && Object.keys(selectedProduct.specs).length > 0"><table class="w-full text-left border-collapse text-xs mb-4"><tbody><tr v-for="(value,key) in selectedProduct.specs" :key="key" class="border-b border-gray-100 hover:bg-gray-50"><th class="py-2.5 pr-2 text-gray-500 font-normal w-1/3 align-top">{{ key }}</th><td class="py-2.5 align-top break-words text-gray-800">{{ value }}</td></tr></tbody></table></div>
-            <div class="text-xs leading-relaxed text-gray-600 costco-html border-t pt-3 border-dashed border-gray-200"><div v-if="selectedProduct?.shipping" v-html="selectedProduct.shipping"></div><div v-else><div class="flex items-start gap-2 mb-2"><i class="fa-solid fa-truck text-blue-500 mt-0.5 text-lg"></i><p>本商品預計完成匯款後 <strong>3-5 個工作天</strong>內送達。</p></div><div class="flex items-start gap-2"><i class="fa-solid fa-rotate-left text-red-400 mt-0.5 text-lg"></i><p>代購商品屬委任契約，除重大瑕疵外，<strong>不提供退換貨服務</strong>。</p></div></div></div>
+            <div v-if="selectedProduct?.specs && Object.keys(selectedProduct.specs).length > 0"><table class="w-full text-left border-collapse mb-4" :style="'font-size:'+detailFontSize+'px'"><tbody><tr v-for="(value,key) in selectedProduct.specs" :key="key" class="border-b border-gray-100 hover:bg-gray-50"><th class="py-2.5 pr-2 text-gray-500 font-normal w-1/3 align-top">{{ key }}</th><td class="py-2.5 align-top break-words text-gray-800">{{ value }}</td></tr></tbody></table></div>
+            <!-- ✅ 2. 配送說明改為從系統設置讀取 -->
+            <div class="leading-relaxed text-gray-600 costco-html border-t pt-3 border-dashed border-gray-200">
+              <div v-if="selectedProduct?.shipping" v-html="selectedProduct.shipping"></div>
+              <div v-else>
+                <div class="flex items-start gap-2 mb-2"><i class="fa-solid fa-truck text-blue-500 mt-0.5 text-lg"></i><p>{{ adminSettings['配送說明'] || '本商品預計完成匯款後 3-5 個工作天寄送出貨，送達時間依好市多配送時間。' }}</p></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-rotate-left text-red-400 mt-0.5 text-lg"></i><p>代購商品屬委任契約，除重大瑕疵外，<strong>不提供退換貨服務</strong>。</p></div>
+              </div>
+            </div>
           </div>
           <div v-show="detailTab==='reviews'">
             <div v-if="selectedProduct?.reviews?.length > 0" class="space-y-3"><div v-for="(rev,idx) in selectedProduct.reviews" :key="idx" class="border-b border-gray-100 pb-3"><div class="flex justify-between items-center mb-1"><span class="font-bold text-gray-800 text-xs">{{ rev.name }}</span><span class="text-gray-400 text-[10px] font-mono">{{ rev.time }}</span></div><div class="text-yellow-400 text-[10px] mb-1.5"><i class="fa-solid fa-star" v-for="n in rev.rating" :key="n"></i></div><p class="text-xs text-gray-600 leading-relaxed">{{ rev.comment }}</p></div></div>
@@ -928,6 +982,31 @@
         // ✅ 8. 好市多查詢 modal
         const showCostcoSearchModal = ref(false);
 
+        // ✅ 1. 商品詳情字體大小
+        const detailFontSize = ref(14);
+
+        // ✅ 3. 重整頁面
+        const isReloading = ref(false);
+        const reloadPage = () => {
+          if (isReloading.value) return;
+          isReloading.value = true;
+          setTimeout(() => window.location.reload(), 300);
+        };
+
+        // ✅ 4. 發貨通知模式
+        const shipNotifyMode = ref('auto');
+        const shipMessage = computed(() => {
+          const buyerName = (allOrders.value.find(o => o.orderId === orderToShip.value) || {}).name || '您';
+          return `【好事多會發生】\n您好 ${buyerName}，\n您的訂單已經幫您寄出囉！🎉\n物流單號：${shippingTrackingCode.value || '（請填入）'}\n\n感謝您的購買，收到商品後別忘了回來給我們評價喔！`;
+        });
+        const copyShipMessage = () => { copyText(shipMessage.value); };
+
+        // ✅ 5. 多組跑馬燈
+        const marqueeLines = computed(() => {
+          const raw = adminSettings.value['跑馬燈文字'] || '';
+          return raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        });
+
         const twCities = ref({
           "基隆市":["仁愛區","信義區","中正區","中山區","安樂區","暖暖區","七堵區"],"台北市":["中正區","大同區","中山區","松山區","大安區","萬華區","信義區","士林區","北投區","內湖區","南港區","文山區"],"新北市":["板橋區","三重區","中和區","永和區","新莊區","新店區","樹林區","鶯歌區","三峽區","淡水區","汐止區","瑞芳區","土城區","蘆洲區","五股區","泰山區","林口區","深坑區","石碇區","坪林區","三芝區","石門區","八里區","平溪區","雙溪區","貢寮區","金山區","萬里區","烏來區"],"桃園市":["桃園區","中壢區","大溪區","楊梅區","蘆竹區","大園區","龜山區","八德區","平鎮區","新屋區","觀音區","復興區"],"新竹縣":["竹北市","竹東鎮","新埔鎮","關西鎮","湖口鄉","新豐鄉","芎林鄉","橫山鄉","北埔鄉","寶山鄉","峨眉鄉","尖石鄉","五峰鄉"],"新竹市":["東區","北區","香山區"],"苗栗縣":["苗栗市","苑裡鎮","通霄鎮","竹南鎮","頭份市","後龍鎮","卓蘭鎮","大湖鄉","公館鄉","銅鑼鄉","南庄鄉","頭屋鄉","三義鄉","西湖鄉","造橋鄉","三灣鄉","獅潭鄉","泰安鄉"],"台中市":["中區","東區","南區","西區","北區","北屯區","西屯區","南屯區","太平區","大里區","霧峰區","烏日區","豐原區","后里區","石岡區","東勢區","和平區","新社區","潭子區","大雅區","神岡區","大肚區","沙鹿區","龍井區","梧棲區","清水區","大甲區","外埔區","大安區"],"彰化縣":["彰化市","鹿港鎮","和美鎮","線西鄉","伸港鄉","福興鄉","秀水鄉","花壇鄉","芬園鄉","員林市","大村鄉","埔鹽鄉","埔心鄉","永靖鄉","社頭鄉","二水鄉","田尾鄉","埤頭鄉","芳苑鄉","大城鄉","竹塘鄉","二林鎮","溪州鄉"],"南投縣":["南投市","埔里鎮","草屯鎮","竹山鎮","集集鎮","名間鄉","鹿谷鄉","中寮鄉","魚池鄉","國姓鄉","水里鄉","信義鄉","仁愛鄉"],"雲林縣":["斗六市","斗南鎮","虎尾鎮","西螺鎮","土庫鎮","北港鎮","古坑鄉","大埤鄉","莿桐鄉","林內鄉","二崙鄉","崙背鄉","麥寮鄉","東勢鄉","褒忠鄉","臺西鄉","元長鄉","四湖鄉","口湖鄉","水林鄉"],"嘉義縣":["太保市","朴子市","布袋鎮","大林鎮","民雄鄉","溪口鄉","新港鄉","六脚鄉","東石鄉","義竹鄉","鹿草鄉","水上鄉","中埔鄉","竹崎鄉","梅山鄉","番路鄉","大埔鄉","阿里山鄉"],"嘉義市":["東區","西區"],"台南市":["中西區","東區","南區","北區","安平區","安南區","永康區","歸仁區","新化區","左鎮區","玉井區","楠西區","南化區","仁德區","關廟區","龍崎區","官田區","麻豆區","佳里區","西港區","七股區","將軍區","學甲區","北門區","新營區","後壁區","白河區","東山區","六甲區","下營區","柳營區","鹽水區","善化區","大內區","山上區","新市區","安定區"],"高雄市":["新興區","前金區","苓雅區","鹽埕區","鼓山區","旗津區","前鎮區","三民區","楠梓區","小港區","左營區","仁武區","大社區","岡山區","橋頭區","燕巢區","田寮區","阿蓮區","路竹區","湖內區","茄萣區","彌陀區","永安區","梓官區","林園區","大寮區","鳳山區","鳥松區","大樹區","旗山區","美濃區","六龜區","內門區","杉林區","甲仙區","桃源區","那瑪夏區","茂林區"],"屏東縣":["屏東市","潮州鎮","東港鎮","恆春鎮","萬丹鄉","長治鄉","麟洛鄉","九如鄉","里港鄉","鹽埔鄉","高樹鄉","萬巒鄉","內埔鄉","竹田鄉","新埤鄉","枋寮鄉","新園鄉","崁頂鄉","林邊鄉","南州鄉","佳冬鄉","琉球鄉","車城鄉","滿州鄉","枋山鄉","三地門鄉","霧臺鄉","瑪家鄉","泰武鄉","來義鄉","春日鄉","獅子鄉","牡丹鄉"],"宜蘭縣":["宜蘭市","羅東鎮","蘇澳鎮","頭城鎮","礁溪鄉","壯圍鄉","員山鄉","冬山鄉","五結鄉","三星鄉","大同鄉","南澳鄉"],"花蓮縣":["花蓮市","鳳林鎮","玉里鎮","新城鄉","吉安鄉","壽豐鄉","光復鄉","豐濱鄉","瑞穗鄉","富里鄉","秀林鄉","萬榮鄉","卓溪鄉"],"台東縣":["臺東市","成功鎮","關山鎮","卑南鄉","大武鄉","太麻里鄉","東河鄉","長濱鄉","海端鄉","池上鄉","延平鄉","蘭嶼鄉","達仁鄉","金峰鄉","綠島鄉"],"澎湖縣":["馬公市","湖西鄉","白沙鄉","西嶼鄉","望安鄉","七美鄉"],"金門縣":["金城鎮","金湖鎮","金沙鎮","金寧鄉","烈嶼鄉","烏坵鄉"],"連江縣":["南竿鄉","北竿鄉","莒光鄉","東引鄉"]
         });
@@ -997,7 +1076,13 @@
         const showCheckoutConfirm = ref(false);
         const orderNotes = ref('');
         const agreeToTerms = ref(false);
-        const agreeProfileTerms = ref(false);
+        // ✅ 7. 會員需知打勾自動儲存 localStorage（cookie替代）
+        let savedAgreeProfile = false;
+        try { savedAgreeProfile = localStorage.getItem('agreeProfileTerms') === '1'; } catch(e) {}
+        const agreeProfileTerms = ref(savedAgreeProfile);
+        watch(agreeProfileTerms, (v) => {
+          try { localStorage.setItem('agreeProfileTerms', v ? '1' : '0'); } catch(e) {}
+        });
         const showPaymentModal = ref(false);
         const selectedOrder = ref(null);
         const paymentForm = ref({ accountLast5: '', date: new Date().toISOString().split('T')[0] });
@@ -1207,8 +1292,10 @@
 
         onMounted(() => { initLiff(); });
 
+        // ✅ 6. 已匯款待確認 併入 處理中 篩選
         const filteredUserOrders = computed(() => {
           if (orderFilter.value === '全部') return orders.value;
+          if (orderFilter.value === '處理中') return orders.value.filter(o => o.status === '處理中' || o.status === '已匯款待確認');
           return orders.value.filter(o => o.status === orderFilter.value);
         });
 
@@ -1248,6 +1335,52 @@
           if (p) openProductDetail(p); else showAlert('提示','此商品資訊已無法追溯','info');
         };
         const openLightbox = (url) => { if(url) lightboxImage.value = url; };
+
+        // ✅ 1. 分享商品給好友（使用 LIFF shareTargetPicker）
+        const shareProduct = async (product) => {
+          if (!product) return;
+          const name = product.name;
+          const price = product.finalPrice;
+          const image = product.images ? product.images[0] : product.image;
+          const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
+          const msg = `【${shopName}】代購推薦\n\n📦 ${name}\n💰 代購價：$${price}\n\n👉 點我開啟商城選購`;
+          if (liff.isApiAvailable('shareTargetPicker')) {
+            try {
+              await liff.shareTargetPicker([{
+                type: 'flex',
+                altText: `${shopName} - ${name} $${price}`,
+                contents: {
+                  type: 'bubble',
+                  hero: image ? { type: 'image', url: image, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' } : undefined,
+                  body: {
+                    type: 'box', layout: 'vertical', spacing: 'sm',
+                    contents: [
+                      { type: 'text', text: shopName, color: '#1d4ed8', size: 'xs', weight: 'bold' },
+                      { type: 'text', text: name, size: 'sm', weight: 'bold', wrap: true, maxLines: 3 },
+                      { type: 'text', text: `代購價 $${price}`, color: '#dc2626', size: 'xl', weight: 'bold' }
+                    ]
+                  },
+                  footer: {
+                    type: 'box', layout: 'vertical',
+                    contents: [{ type: 'button', style: 'primary', color: '#2563eb', action: { type: 'message', label: '我要代購', text: `我想代購：${name}（$${price}）` } }]
+                  }
+                }
+              }]);
+              showAlert('分享成功', '已開啟好友選擇視窗！', 'success');
+            } catch(e) {
+              // 降級：使用系統分享或複製文字
+              if (navigator.share) {
+                navigator.share({ title: shopName, text: msg }).catch(() => { copyText(msg); showAlert('已複製', '請手動貼上分享給好友', 'info'); });
+              } else {
+                copyText(msg); showAlert('已複製商品資訊', '請手動貼上分享給好友', 'info');
+              }
+            }
+          } else if (navigator.share) {
+            navigator.share({ title: shopName, text: msg }).catch(() => { copyText(msg); showAlert('已複製', '請手動貼上分享給好友', 'info'); });
+          } else {
+            copyText(msg); showAlert('已複製商品資訊', '請手動貼上分享給好友', 'info');
+          }
+        };
 
         const addToCart = async (p) => {
           if(isGuest.value) { showGuestPopup.value = true; return; }
@@ -1360,8 +1493,14 @@
             discountAmount: appliedDiscount.value ? (appliedDiscount.value.type==='deduct' ? appliedDiscount.value.value : cartSubtotal.value*(1-appliedDiscount.value.value)) : 0
           };
           try {
-            await callAPI('createOrder', orderData);
+            const res = await callAPI('createOrder', orderData);
             showCheckoutConfirm.value = false;
+            // ✅ 4. 由買家端發送訊息（不耗費系統推播配額）
+            try {
+              if (liff.isInClient() && res.buyerMsg) {
+                await liff.sendMessages([{ type: 'text', text: res.buyerMsg }]);
+              }
+            } catch(e) { /* 不影響下單流程 */ }
             if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             await showAlert('訂單已成立','感謝您的訂購！\n請至「我的訂單」查看賣家匯款帳號，並盡速匯款回報！','success');
             cart.value = []; orderNotes.value = ''; appliedDiscount.value = null; currentTab.value = 'orders'; loadOrders();
@@ -1379,7 +1518,19 @@
         const submitPayment = () => withBtnLock('payment', async () => {
           if (!/^\d{5}$/.test(paymentForm.value.accountLast5)) return await showAlert('錯誤','請輸入5碼數字','error');
           const info = `帳號後五碼: ${paymentForm.value.accountLast5}, 日期: ${paymentForm.value.date}`;
-          try { await callAPI('submitPayment', { orderId: selectedOrder.value.orderId, info }); showPaymentModal.value = false; await showAlert('回報成功','已通知賣家，請等待版主確認','success'); loadOrders(); } catch(e) {}
+          try {
+            await callAPI('submitPayment', { orderId: selectedOrder.value.orderId, info });
+            // ✅ 4. 由買家端發送匯款通知（節省推播配額）
+            try {
+              if (liff.isInClient()) {
+                const payMsg = `【好事多會發生 - 匯款回報】\n訂單：${selectedOrder.value.orderId}\n匯款金額：$${selectedOrder.value.totalAmount}\n帳號後五碼：${paymentForm.value.accountLast5}\n匯款日期：${paymentForm.value.date}\n\n請版主確認後盡速安排出貨，謝謝！`;
+                await liff.sendMessages([{ type: 'text', text: payMsg }]);
+              }
+            } catch(e) {}
+            showPaymentModal.value = false;
+            await showAlert('回報成功','已通知賣家，請等待版主確認','success');
+            loadOrders();
+          } catch(e) {}
         });
 
         // ✅ 7. 完成訂單加確認對話框
@@ -1482,11 +1633,17 @@
           copyText(`【好事多會發生 - 採購單】\n訂單：${order.orderId}\n買家：${order.name}\n電話：${order.phone}\n地址：${order.address}\n\n明細：\n${itemsStr}${order.notes?'\n\n備註：'+order.notes:''}`);
         };
 
-        const promptShipOrder = (orderId) => { orderToShip.value = orderId; shippingTrackingCode.value = ''; showShippingModal.value = true; };
+        const promptShipOrder = (orderId) => { orderToShip.value = orderId; shippingTrackingCode.value = ''; shipNotifyMode.value = 'auto'; showShippingModal.value = true; };
         const confirmShipOrder = async () => {
           loading.value = true;
-          await callAPI('adminShipOrder', { orderId: orderToShip.value, tracking: shippingTrackingCode.value, admin: user.value.name });
-          showShippingModal.value = false; adminLoadData(); loading.value = false; await showAlert('發貨成功','已通知買家物流單號','success');
+          // ✅ 4. 根據通知模式決定是否發 LINE 推播
+          await callAPI('adminShipOrder', { orderId: orderToShip.value, tracking: shippingTrackingCode.value, admin: user.value.name, skipPush: shipNotifyMode.value === 'manual' });
+          showShippingModal.value = false; adminLoadData(); loading.value = false;
+          if (shipNotifyMode.value === 'manual') {
+            await showAlert('發貨完成','訂單狀態已更新。\n請手動複製訊息傳給買家。','success');
+          } else {
+            await showAlert('發貨成功','已透過系統通知買家物流單號','success');
+          }
         };
 
         const batchUpdateStatus = async (status) => {
@@ -1578,17 +1735,19 @@
           isGuest, guestBrowsing, showGuestPopup, enterAsGuest, handleNav, forceInitSpreadsheet, uploadCatIcon,
           searchQuery, searchHistory, filteredProducts, saveSearchHistory, tryFetchFromCostco, isFetching,
           discountInput, appliedDiscount, availableDiscountCodes, applyDiscount,
-          showProductDetail, selectedProduct, detailTab, openProductDetail, tryOpenHistoryProduct, openLightbox, lightboxImage,
+          showProductDetail, selectedProduct, detailTab, openProductDetail, tryOpenHistoryProduct, openLightbox, lightboxImage, shareProduct,
           addToCart, updateQuantity, removeFromCart, clearCart, checkout, openCheckout, showCheckoutConfirm, orderNotes, agreeToTerms, agreeProfileTerms, userCancelOrder,
           profileForm, saveProfile, contactForm, submitContact, showReviewForm, reviewForm, reviewTargetItem, openReviewForm, submitReview,
           showPaymentModal, selectedOrder, paymentForm, showPaymentForm, submitPayment, completeOrder,
           adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, toggleBlock,
-          forceRunScraper, saveAdminSettings, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo, showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder, adminSetTracking,
+          forceRunScraper, saveAdminSettings, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo,
+          showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder, adminSetTracking, shipNotifyMode, shipMessage, copyShipMessage,
           adminCategories, saveAdminCategories, showAdminProductEditor, editProdForm, adminProductSearch, adminFilteredProducts, openAdminProductEditor, adminSaveProduct,
           customProdForm, submitCustomProduct, discountForm, discounts, adminSaveDiscountCode, saveDiscountCodes, deleteDiscount, editingDiscountIdx, editDiscount, cancelEditDiscount,
           toggleSortOrder, getStatusColor, copyText, toggleFavorite, isFavorite, reviewThreshold, requestApproval,
           monthlyStats, isLoadingStats, latestMonth, totalAllTime, loadMonthlyStats,
-          fontSizeLabel, cycleFontSize, termsSize, getCatIcon, catIconMap, showCostcoSearchModal, isBtnLoading
+          fontSizeLabel, cycleFontSize, termsSize, getCatIcon, catIconMap, showCostcoSearchModal, isBtnLoading,
+          detailFontSize, isReloading, reloadPage, marqueeLines
         };
       }
     });
