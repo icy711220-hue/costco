@@ -1531,10 +1531,11 @@
           const shareText = `我發現一個好事多會發生網站，非常棒喔，推薦給你。${shopLineUrl}\n\n我正在看這個商品想代購：\n📦 ${name}\n💰 代購價：$${price}\n\n快來一起代購！`;
 
           // 優先嘗試 LIFF shareTargetPicker（最佳體驗）
-          if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+          const liffObj = getLiff();
+          if (liffObj && liffObj.isApiAvailable && liffObj.isApiAvailable('shareTargetPicker')) {
             try {
               const image = product.images ? product.images[0] : product.image;
-              await liff.shareTargetPicker([
+              await liffObj.shareTargetPicker([
                 {
                   type: 'flex',
                   altText: `${shopName} - ${name} $${price}\n${shopLineUrl}`,
@@ -1565,9 +1566,8 @@
 
           // 降級方案：使用 LINE 分享 URL scheme
           const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
-          if (liff.isInClient()) {
-            // 在 LINE 內使用 openWindow
-            try { liff.openWindow({ url: lineShareUrl, external: false }); return; } catch(e) {}
+          if (liffObj && liffObj.isInClient && liffObj.isInClient()) {
+            try { liffObj.openWindow({ url: lineShareUrl, external: false }); return; } catch(e) {}
           }
           // 最終降級：Web 分享 API 或複製
           if (navigator.share) {
@@ -1697,8 +1697,9 @@
             // ✅ 2. 完整訂單訊息，由買家端發送（節省推播配額）
             const fullBuyerMsg = `【${shopName}】代購訂單確認\n\n感謝您 ${user.value.name} 的訂購！\n訂單編號：${res.orderId}\n\n📦 訂單明細：\n${itemsText}\n\n💰 應付總額：$${cartTotal.value}${orderNotes.value ? '\n\n📝 備註：' + orderNotes.value : ''}\n\n━━━━━━━━━━━━━━\n🏦 匯款帳號\n${bankInfo}\n━━━━━━━━━━━━━━\n請盡速完成匯款，並至系統填寫回報，謝謝！`;
             try {
-              if (liff.isInClient()) {
-                await liff.sendMessages([{ type: 'text', text: fullBuyerMsg }]);
+              const liffObj = getLiff();
+              if (liffObj && liffObj.isInClient && liffObj.isInClient()) {
+                await liffObj.sendMessages([{ type: 'text', text: fullBuyerMsg }]);
               }
             } catch(e) { /* 不影響下單流程 */ }
             if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -1729,9 +1730,10 @@
             await callAPI('submitPayment', { orderId: selectedOrder.value.orderId, info });
             // ✅ 4. 由買家端發送匯款通知（節省推播配額）
             try {
-              if (liff.isInClient()) {
+              const liffObj = getLiff();
+              if (liffObj && liffObj.isInClient && liffObj.isInClient()) {
                 const payMsg = `【好事多會發生 - 匯款回報】\n訂單：${selectedOrder.value.orderId}\n匯款金額：$${selectedOrder.value.totalAmount}\n帳號後五碼：${paymentForm.value.accountLast5}\n匯款日期：${paymentForm.value.date}\n\n請版主確認後盡速安排出貨，謝謝！`;
-                await liff.sendMessages([{ type: 'text', text: payMsg }]);
+                await liffObj.sendMessages([{ type: 'text', text: payMsg }]);
               }
             } catch(e) {}
             showPaymentModal.value = false;
