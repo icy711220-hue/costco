@@ -294,6 +294,8 @@
             <div>
               <p class="text-[11px] text-gray-500 font-mono">小計: ${{ cartSubtotal }} | 運費: ${{ currentShippingFee }} <span v-if="appliedDiscount" class="text-red-500">| 折扣優惠</span></p>
               <p class="text-xl font-bold text-red-600">總額: ${{ cartTotal }}</p>
+              <!-- ✅ 6. 節省金額 -->
+              <p v-if="cartSavings > 0" class="text-[11px] text-green-600 font-bold"><i class="fa-solid fa-piggy-bank mr-1"></i>已省下 ${{ cartSavings }} 元！</p>
             </div>
             <!-- ✅ 6. 防重複點擊 -->
             <button @click="openCheckout" :disabled="isBtnLoading.checkout" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md disabled:bg-gray-400">
@@ -307,15 +309,24 @@
       <!-- 訂單頁 -->
       <div v-show="currentTab === 'orders'">
         <!-- ✅ 6. 已匯款待確認併入處理中篩選 -->
-        <div class="flex gap-2 mb-4 overflow-x-auto hide-scrollbar pb-2">
+        <div class="flex gap-2 mb-3 overflow-x-auto hide-scrollbar pb-1 items-center">
           <button v-for="f in ['全部','待匯款','處理中','已出貨','已完成']" :key="f" @click="orderFilter = f" :class="orderFilter===f?'bg-blue-600 text-white':'bg-white text-gray-600 border'" class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">
             {{ f === '處理中' ? '處理中/已匯款' : f }}
           </button>
+          <!-- ✅ 7. 重新整理訂單按鈕 -->
+          <button @click="refreshOrders" :disabled="isRefreshingOrders" class="ml-auto flex-shrink-0 w-8 h-8 bg-white border rounded-full flex items-center justify-center shadow-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50">
+            <i class="fa-solid fa-rotate text-sm" :class="isRefreshingOrders ? 'fa-spin' : ''"></i>
+          </button>
         </div>
-        <div v-if="filteredUserOrders.length === 0" class="text-center text-gray-500 mt-10">
+        <!-- ✅ 7. 載入中提示 -->
+        <div v-if="isRefreshingOrders" class="text-center py-6 text-gray-400">
+          <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-400 mb-2 block"></i>
+          <p class="text-sm">正在同步訂單資料...</p>
+        </div>
+        <div v-if="!isRefreshingOrders && filteredUserOrders.length === 0" class="text-center text-gray-500 mt-6">
           <i class="fa-solid fa-box-open text-4xl mb-3 text-gray-300"></i><p>尚無訂單紀錄</p>
         </div>
-        <div class="space-y-4">
+        <div v-show="!isRefreshingOrders" class="space-y-4">
           <div v-for="order in filteredUserOrders" :key="order.orderId" class="bg-white rounded-lg shadow p-4">
             <div class="flex justify-between items-center border-b pb-2 mb-2">
               <span class="text-xs text-gray-500 flex items-center font-mono">{{ order.orderId }} <i @click="copyText(order.orderId)" class="fa-regular fa-copy ml-2 text-gray-400 cursor-pointer"></i></span>
@@ -686,6 +697,15 @@
               <p class="text-[10px] text-gray-400 mt-1">每行一條，最多可設定數十組，自動輪播</p>
             </div>
             <button @click="saveAdminSettings" :disabled="isBtnLoading.saveSettings" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg mt-2 text-sm font-bold shadow disabled:opacity-50">儲存所有設置</button>
+            <!-- ✅ 5. 資料保密功能 -->
+            <div class="border-t border-gray-100 pt-4 mt-4">
+              <h4 class="text-xs font-bold text-gray-700 mb-2"><i class="fa-solid fa-shield-halved mr-1 text-gray-500"></i>試算表資料保護</h4>
+              <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">點擊後將對試算表中的「會員列表」與「訂單紀錄」兩個工作表設定保護，僅擁有者可查看敏感資訊。</p>
+              <button @click="protectSensitiveSheets" :disabled="isBtnLoading.protect" class="w-full bg-gray-700 hover:bg-gray-800 text-white py-2 rounded-lg text-xs font-bold shadow disabled:opacity-50">
+                <i v-if="isBtnLoading.protect" class="fa-solid fa-spinner fa-spin mr-1"></i>
+                <i v-else class="fa-solid fa-lock mr-1"></i>設定試算表資料保護
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -898,7 +918,7 @@
             <div><p class="font-bold text-sm text-blue-800">好市多官網</p><p class="text-xs text-blue-500">www.costco.com.tw</p></div>
             <i class="fa-solid fa-external-link-alt ml-auto text-blue-400"></i>
           </a>
-          <a href="https://www.costco.com.tw/hot-buys" target="_blank" class="flex items-center gap-3 bg-red-50 border border-red-100 p-3 rounded-lg hover:bg-red-100">
+          <a href="https://www.costco.com.tw/offers/hot-buys" target="_blank" class="flex items-center gap-3 bg-red-50 border border-red-100 p-3 rounded-lg hover:bg-red-100">
             <i class="fa-solid fa-fire text-red-500 text-xl"></i>
             <div><p class="font-bold text-sm text-red-800">Hot Buys 限時特賣</p><p class="text-xs text-red-400">本週最優惠商品</p></div>
             <i class="fa-solid fa-external-link-alt ml-auto text-red-300"></i>
@@ -1049,6 +1069,20 @@
           }
           return Math.max(0, Math.round(total));
         });
+
+        // ✅ 6. 購物車節省金額
+        const cartSavings = computed(() => {
+          const originalTotal = cart.value.reduce((acc, item) => acc + (item.originalPrice || item.finalPrice) * item.quantity, 0);
+          let savings = originalTotal - cartSubtotal.value;
+          if (appliedDiscount.value) {
+            if(appliedDiscount.value.type === 'deduct') savings += appliedDiscount.value.value;
+            else if(appliedDiscount.value.type === 'discount') savings += cartSubtotal.value * (1 - appliedDiscount.value.value);
+          }
+          return Math.max(0, Math.round(savings));
+        });
+
+        // ✅ 7. 訂單重新整理
+        const isRefreshingOrders = ref(false);
 
         const reviewThreshold = computed(() => parseInt(adminSettings.value['需審核金額門檻']) || 5000);
         const homeFilteredProducts = computed(() => {
@@ -1271,7 +1305,19 @@
           } catch(e) {}
         };
 
-        const loadOrders = async () => { orders.value = await callAPI('getOrders', { lineId: user.value.lineId }); };
+        const loadOrders = async (showLoading = false) => {
+          if (!user.value) return;
+          if (showLoading) isRefreshingOrders.value = true;
+          try { orders.value = await callAPI('getOrders', { lineId: user.value.lineId }); } catch(e) {}
+          isRefreshingOrders.value = false;
+        };
+
+        // ✅ 7. 手動重新整理訂單
+        const refreshOrders = async () => {
+          isRefreshingOrders.value = true;
+          try { orders.value = await callAPI('getOrders', { lineId: user.value.lineId }); } catch(e) {}
+          isRefreshingOrders.value = false;
+        };
 
         const loadMonthlyStats = async () => {
           isLoadingStats.value = true;
@@ -1336,50 +1382,63 @@
         };
         const openLightbox = (url) => { if(url) lightboxImage.value = url; };
 
-        // ✅ 1. 分享商品給好友（使用 LIFF shareTargetPicker）
+        // ✅ 1. 分享商品給好友 - 使用 LINE 官方分享連結
         const shareProduct = async (product) => {
           if (!product) return;
+          const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
+          const shopLineUrl = 'https://lin.ee/Vujm2et'; // 官方帳號連結
           const name = product.name;
           const price = product.finalPrice;
-          const image = product.images ? product.images[0] : product.image;
-          const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
-          const msg = `【${shopName}】代購推薦\n\n📦 ${name}\n💰 代購價：$${price}\n\n👉 點我開啟商城選購`;
-          if (liff.isApiAvailable('shareTargetPicker')) {
+
+          // 分享文字
+          const shareText = `我發現一個好事多會發生網站，非常棒喔，推薦給你。${shopLineUrl}\n\n我正在看這個商品想代購：\n📦 ${name}\n💰 代購價：$${price}\n\n快來一起代購！`;
+
+          // 優先嘗試 LIFF shareTargetPicker（最佳體驗）
+          if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
             try {
-              await liff.shareTargetPicker([{
-                type: 'flex',
-                altText: `${shopName} - ${name} $${price}`,
-                contents: {
-                  type: 'bubble',
-                  hero: image ? { type: 'image', url: image, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' } : undefined,
-                  body: {
-                    type: 'box', layout: 'vertical', spacing: 'sm',
-                    contents: [
-                      { type: 'text', text: shopName, color: '#1d4ed8', size: 'xs', weight: 'bold' },
-                      { type: 'text', text: name, size: 'sm', weight: 'bold', wrap: true, maxLines: 3 },
-                      { type: 'text', text: `代購價 $${price}`, color: '#dc2626', size: 'xl', weight: 'bold' }
-                    ]
-                  },
-                  footer: {
-                    type: 'box', layout: 'vertical',
-                    contents: [{ type: 'button', style: 'primary', color: '#2563eb', action: { type: 'message', label: '我要代購', text: `我想代購：${name}（$${price}）` } }]
+              const image = product.images ? product.images[0] : product.image;
+              await liff.shareTargetPicker([
+                {
+                  type: 'flex',
+                  altText: `${shopName} - ${name} $${price}\n${shopLineUrl}`,
+                  contents: {
+                    type: 'bubble',
+                    hero: image ? { type: 'image', url: image, size: 'full', aspectRatio: '20:13', aspectMode: 'cover', action: { type: 'uri', uri: shopLineUrl } } : undefined,
+                    body: {
+                      type: 'box', layout: 'vertical', spacing: 'sm',
+                      contents: [
+                        { type: 'text', text: `我在${shopName}找到好物！`, color: '#1d4ed8', size: 'xs', weight: 'bold' },
+                        { type: 'text', text: name, size: 'sm', weight: 'bold', wrap: true, maxLines: 3 },
+                        { type: 'text', text: `代購價 $${price}`, color: '#dc2626', size: 'xl', weight: 'bold' }
+                      ]
+                    },
+                    footer: {
+                      type: 'box', layout: 'vertical', spacing: 'sm',
+                      contents: [
+                        { type: 'button', style: 'primary', color: '#06C755', action: { type: 'uri', label: '加入 LINE 官方帳號', uri: shopLineUrl } },
+                        { type: 'button', style: 'secondary', action: { type: 'message', label: '我也想代購', text: `我想代購：${name}（$${price}）` } }
+                      ]
+                    }
                   }
                 }
-              }]);
-              showAlert('分享成功', '已開啟好友選擇視窗！', 'success');
-            } catch(e) {
-              // 降級：使用系統分享或複製文字
-              if (navigator.share) {
-                navigator.share({ title: shopName, text: msg }).catch(() => { copyText(msg); showAlert('已複製', '請手動貼上分享給好友', 'info'); });
-              } else {
-                copyText(msg); showAlert('已複製商品資訊', '請手動貼上分享給好友', 'info');
-              }
-            }
-          } else if (navigator.share) {
-            navigator.share({ title: shopName, text: msg }).catch(() => { copyText(msg); showAlert('已複製', '請手動貼上分享給好友', 'info'); });
-          } else {
-            copyText(msg); showAlert('已複製商品資訊', '請手動貼上分享給好友', 'info');
+              ]);
+              return;
+            } catch(e) { /* 降級 */ }
           }
+
+          // 降級方案：使用 LINE 分享 URL scheme
+          const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
+          if (liff.isInClient()) {
+            // 在 LINE 內使用 openWindow
+            try { liff.openWindow({ url: lineShareUrl, external: false }); return; } catch(e) {}
+          }
+          // 最終降級：Web 分享 API 或複製
+          if (navigator.share) {
+            try { await navigator.share({ title: shopName, text: shareText }); return; } catch(e) {}
+          }
+          // 複製連結
+          copyText(shareText);
+          showAlert('已複製分享文字', '請手動貼上分享給好友', 'info');
         };
 
         const addToCart = async (p) => {
@@ -1486,6 +1545,9 @@
 
         const checkout = () => withBtnLock('placeOrder', async () => {
           if (!agreeToTerms.value) return await showAlert('請確認','請先詳閱並勾選同意購買需知條款。','error');
+          const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
+          const bankInfo = adminSettings.value['銀行帳號'] || '';
+          const itemsText = cart.value.map(i => `  • ${i.name} x${i.quantity}  $${i.finalPrice * i.quantity}`).join('\n');
           const orderData = {
             lineId: user.value.lineId, name: user.value.name, phone: user.value.phone, address: user.value.address,
             items: cart.value, totalAmount: cartTotal.value, notes: orderNotes.value,
@@ -1495,15 +1557,23 @@
           try {
             const res = await callAPI('createOrder', orderData);
             showCheckoutConfirm.value = false;
-            // ✅ 4. 由買家端發送訊息（不耗費系統推播配額）
+            // ✅ 2. 完整訂單訊息，由買家端發送（節省推播配額）
+            const fullBuyerMsg = `【${shopName}】代購訂單確認\n\n感謝您 ${user.value.name} 的訂購！\n訂單編號：${res.orderId}\n\n📦 訂單明細：\n${itemsText}\n\n💰 應付總額：$${cartTotal.value}${orderNotes.value ? '\n\n📝 備註：' + orderNotes.value : ''}\n\n━━━━━━━━━━━━━━\n🏦 匯款帳號\n${bankInfo}\n━━━━━━━━━━━━━━\n請盡速完成匯款，並至系統填寫回報，謝謝！`;
             try {
-              if (liff.isInClient() && res.buyerMsg) {
-                await liff.sendMessages([{ type: 'text', text: res.buyerMsg }]);
+              if (liff.isInClient()) {
+                await liff.sendMessages([{ type: 'text', text: fullBuyerMsg }]);
               }
             } catch(e) { /* 不影響下單流程 */ }
             if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            await showAlert('訂單已成立','感謝您的訂購！\n請至「我的訂單」查看賣家匯款帳號，並盡速匯款回報！','success');
-            cart.value = []; orderNotes.value = ''; appliedDiscount.value = null; currentTab.value = 'orders'; loadOrders();
+            await showAlert('訂單已成立 🎉','感謝您的訂購！\n請至「我的訂單」查看賣家匯款帳號，並盡速匯款回報！','success');
+            cart.value = []; orderNotes.value = ''; appliedDiscount.value = null;
+            // ✅ 7. 先顯示 loading 再跳轉，讓訂單有時間寫入
+            currentTab.value = 'orders';
+            isRefreshingOrders.value = true;
+            setTimeout(async () => {
+              try { orders.value = await callAPI('getOrders', { lineId: user.value.lineId }); } catch(e) {}
+              isRefreshingOrders.value = false;
+            }, 1500);
           } catch(e) {}
         });
 
@@ -1533,10 +1603,16 @@
           } catch(e) {}
         });
 
-        // ✅ 7. 完成訂單加確認對話框
+        // ✅ 完成訂單加確認對話框，修正 API action
         const completeOrder = (order) => withBtnLock('complete_'+order.orderId, async () => {
           const confirmed = await showAlert('完成訂單','確認您已收到商品無誤了嗎？收到後即確認完成。','info',true);
-          if(confirmed) { await callAPI('updateOrderStatus', { orderId: order.orderId, status: '已完成' }); loadOrders(); }
+          if(confirmed) {
+            try {
+              await callAPI('updateOrderStatus', { orderId: order.orderId, status: '已完成' });
+              await showAlert('完成','訂單已確認完成！','success');
+              await loadOrders();
+            } catch(e) {}
+          }
         });
 
         const openReviewForm = (item) => { reviewTargetItem.value = item; reviewForm.value = { rating: 5, comment: '' }; showReviewForm.value = true; };
@@ -1726,10 +1802,20 @@
           });
         };
 
+        // ✅ 5. 試算表資料保護
+        const protectSensitiveSheets = () => withBtnLock('protect', async () => {
+          const confirmed = await showAlert('資料保護','確定要對「會員列表」和「訂單紀錄」設定保護嗎？設定後僅擁有者可直接查看試算表。','info', true);
+          if (!confirmed) return;
+          try {
+            await callAPI('protectSheets', { admin: user.value.name });
+            await showAlert('保護設定完成', '✅ 會員列表與訂單紀錄已設定保護！\n\n系統仍可正常讀取寫入，但在試算表介面中其他人將看不到內容。', 'success');
+          } catch(e) {}
+        });
+
         return {
           currentTab, loading, loadingProgress, loadingText, user, liffProfile, adminSettings, categories, selectedCategory, viewMode, sortOrder,
           twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
-          allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, orders, orderFilter, filteredUserOrders, addonProducts,
+          allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, cartSavings, orders, orderFilter, filteredUserOrders, addonProducts,
           hasMoreProducts, displayedCount, isLoadingMore, loadMoreProducts,
           freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
           isGuest, guestBrowsing, showGuestPopup, enterAsGuest, handleNav, forceInitSpreadsheet, uploadCatIcon,
@@ -1747,7 +1833,8 @@
           toggleSortOrder, getStatusColor, copyText, toggleFavorite, isFavorite, reviewThreshold, requestApproval,
           monthlyStats, isLoadingStats, latestMonth, totalAllTime, loadMonthlyStats,
           fontSizeLabel, cycleFontSize, termsSize, getCatIcon, catIconMap, showCostcoSearchModal, isBtnLoading,
-          detailFontSize, isReloading, reloadPage, marqueeLines
+          detailFontSize, isReloading, reloadPage, marqueeLines,
+          isRefreshingOrders, refreshOrders, protectSensitiveSheets
         };
       }
     });
