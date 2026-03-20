@@ -1182,10 +1182,6 @@
           if (sortOrder.value === 'priceDesc') res = [...res].sort((a,b) => b.finalPrice - a.finalPrice);
           return res;
         });
-        const addonProducts = computed(() => {
-          const cartIds = cart.value.map(i => i.id);
-          return allProducts.value.filter(p => !p.isDelisted && p.finalPrice < 300 && !cartIds.includes(p.id)).slice(0, 5);
-        });
         const searchQuery = ref('');
         const filteredProducts = computed(() => {
           const query = searchQuery.value.trim().toLowerCase();
@@ -1211,12 +1207,10 @@
         const paymentForm = ref({ accountLast5: '', date: new Date().toISOString().split('T')[0] });
         const profileForm = ref({ name: '', phone: '', city: '', district: '', addressDetail: '', address: '', gender: '' }); // ✅ 3. 加性別
 
-        // ✅ 6. 順手帶一件換頁
         const addonSeedOffset = ref(0);
         const isRotatingAddon = ref(false);
         const addonPool = computed(() => {
           const cartIds = cart.value.map(i => i.id);
-          // ✅ 6. 上限改為 1000 元以內（而非 300）讓選擇更多
           return allProducts.value.filter(p => !p.isDelisted && p.finalPrice <= 1000 && !cartIds.includes(p.id));
         });
         const addonProductsDisplay = computed(() => {
@@ -1229,7 +1223,7 @@
           }
           return result;
         });
-        // ✅ 保留原本 addonProducts computed 供其他地方使用
+        // addonProducts：購物車附近推薦（300元以下）
         const addonProducts = computed(() => {
           const cartIds = cart.value.map(i => i.id);
           return allProducts.value.filter(p => !p.isDelisted && p.finalPrice < 300 && !cartIds.includes(p.id)).slice(0, 5);
@@ -1237,7 +1231,8 @@
         const refreshAddonProducts = () => {
           isRotatingAddon.value = true;
           const pool = addonPool.value;
-          if (pool.length > 5) addonSeedOffset.value = (addonSeedOffset.value + 5) % pool.value?.length || 0;
+          // ✅ 修正：pool 已是陣列，不需要 .value
+          if (pool.length > 5) addonSeedOffset.value = (addonSeedOffset.value + 5) % pool.length;
           else addonSeedOffset.value = Math.floor(Math.random() * Math.max(1, pool.length));
           setTimeout(() => { isRotatingAddon.value = false; }, 500);
         };
