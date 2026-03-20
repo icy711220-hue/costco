@@ -12,27 +12,39 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #f3f4f6; padding-bottom: 70px; }
+    .nav-item.active { color: #3b82f6; }
+    [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    [v-cloak] { display: none; }
+    .marquee-container { overflow: hidden; white-space: nowrap; background: #fff3cd; color: #856404; font-size: 12px; display: flex; align-items: center; padding: 6px 0; }
+    .marquee-content { display: inline-block; animation: marquee linear infinite; padding-left: 100%; }
+    @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
     .splash-screen { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
     .costco-html img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
   </style>
 </head>
 <body>
   
+  <div id="fallback-error" style="display: none; padding: 20px; color: #b91c1c; text-align: center; margin-top: 50px; background: #fee2e2; border-radius: 10px; margin: 20px;">
+    <i class="fa-solid fa-triangle-exclamation text-4xl mb-3"></i>
+    <h2 style="font-size: 18px; font-weight: bold;">系統資料載入異常</h2>
+    <p class="text-sm mt-2 text-gray-700">資料庫連線中斷或需要升級，請點擊下方按鈕修復，或通知管理員。</p>
+    <button onclick="localStorage.clear(); window.location.reload();" class="mt-4 px-5 py-2 bg-red-600 text-white rounded font-bold shadow-md">強制清除暫存並修復</button>
+  </div>
+
   <div id="app" v-cloak>
     
     <div v-if="sysAlert.show" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[200] p-4 backdrop-blur-sm">
       <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl text-center transform transition-all scale-100">
-        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4" :class="sysAlert.type === 'success' ? 'bg-green-100 text-green-500' : (sysAlert.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500')">
+        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4" 
+             :class="sysAlert.type === 'success' ? 'bg-green-100 text-green-500' : (sysAlert.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500')">
           <i class="fa-solid text-3xl" :class="sysAlert.type === 'success' ? 'fa-check' : (sysAlert.type === 'error' ? 'fa-xmark' : 'fa-circle-info')"></i>
         </div>
-        <h3 class="text-lg font-bold text-gray-900 mb-2">{{ sysAlert.title }}</h3>
-        <p class="text-sm text-gray-500 mb-6 whitespace-pre-line">{{ sysAlert.message }}</p>
+        <h3 class="text-lg leading-6 font-bold text-gray-900 mb-2">{{ sysAlert.title }}</h3>
+        <p class="text-sm text-gray-500 mb-6 whitespace-pre-line leading-relaxed">{{ sysAlert.message }}</p>
         <div class="flex gap-3">
-          <button v-if="sysAlert.showCancel" @click="closeAlert(false)" class="flex-1 bg-gray-100 py-3 rounded-lg font-bold">取消</button>
-          <button @click="closeAlert(true)" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold">確定</button>
+          <button v-if="sysAlert.showCancel" @click="closeAlert(false)" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-bold transition-colors">取消</button>
+          <button @click="closeAlert(true)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md transition-colors">確定</button>
         </div>
       </div>
     </div>
@@ -55,8 +67,14 @@
     </div>
 
     <div v-if="loading" class="fixed inset-0 splash-screen flex flex-col items-center justify-center z-[100] text-white">
-      <div class="mb-8 text-center"><i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i><h1 class="text-3xl font-bold tracking-wider drop-shadow-md">好事多會發生</h1></div>
-      <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner"><div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div></div>
+      <div class="mb-8 text-center">
+        <i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i>
+        <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">好事多會發生</h1>
+        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.0</p>
+      </div>
+      <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner">
+        <div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div>
+      </div>
       <p class="text-xs opacity-80 animate-pulse">{{ loadingText }}</p>
       
       <div class="mt-8 flex justify-center items-center gap-3 text-xs text-white opacity-80 font-bold bg-white bg-opacity-10 px-4 py-3 rounded-xl backdrop-blur-md">
@@ -68,12 +86,13 @@
     </div>
 
     <header v-show="!loading" class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
-      <h1 class="text-xl font-bold">{{ pageTitle }}</h1>
-      <div v-if="user?.isAdmin" class="text-xs bg-red-500 px-2 py-1 rounded font-bold shadow">管理員</div>
+      <h1 class="text-xl font-bold">{{ pageTitle }} <span class="text-xs font-normal opacity-75 ml-1">V7.0</span></h1>
+      <div v-if="user && user.isAdmin" class="text-xs bg-red-500 px-2 py-1 rounded font-bold shadow">管理員</div>
     </header>
 
     <div v-if="!loading && adminSettings['跑馬燈文字']" class="marquee-container sticky top-[60px] z-40 shadow-sm">
-      <i class="fa-solid fa-bullhorn mx-2 flex-shrink-0"></i><div class="marquee-content" :style="{ animationDuration: '10s' }">{{ adminSettings['跑馬燈文字'] }}</div>
+      <i class="fa-solid fa-bullhorn mx-2 flex-shrink-0"></i>
+      <div class="marquee-content" :style="{ animationDuration: (adminSettings['跑馬燈速度'] || 10) + 's' }">{{ adminSettings['跑馬燈文字'] }}</div>
     </div>
 
     <main v-show="!loading" class="p-3">
@@ -100,14 +119,16 @@
         
         <div :class="viewMode === 'grid' ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-3'">
           <div v-for="product in homeFilteredProducts" :key="product.id" class="bg-white rounded-lg shadow overflow-hidden flex relative" :class="viewMode === 'grid' ? 'flex-col' : 'flex-row'">
+            
             <button @click.stop="toggleFavorite(product)" class="absolute top-1 right-1 z-20 w-6 h-6 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-sm">
               <i :class="isFavorite(product.id) ? 'fa-solid fa-heart text-red-500' : 'fa-regular fa-heart text-gray-400'"></i>
             </button>
+
             <div class="relative cursor-pointer" :class="viewMode === 'grid' ? 'w-full' : 'w-1/3'" @click="openProductDetail(product)">
               <div v-if="product.discount > 0" class="absolute top-1 left-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">省 ${{ product.discount }}</div>
               <div v-if="product.isCustom" class="absolute top-1 left-1 bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">獨家</div>
               <div v-else-if="product.isNew && product.discount <= 0" class="absolute top-1 left-1 bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">NEW</div>
-              <img :src="product.image || 'https://via.placeholder.com/150'" class="w-full h-24 object-cover transition-all" :class="{'opacity-50 grayscale': product.stock === 0}">
+              <img :src="product.images && product.images.length > 0 ? product.images[product.currentImgIdx || 0] : (product.image || 'https://via.placeholder.com/150')" class="w-full h-24 object-cover transition-all" :class="{'opacity-50 grayscale': product.stock === 0}">
             </div>
             
             <div class="p-1.5 flex-1 flex flex-col">
@@ -121,7 +142,8 @@
                   <p class="text-red-600 font-bold text-sm">${{ product.finalPrice }}</p>
                 </div>
               </div>
-              <button v-if="product.finalPrice >= reviewThreshold" @click="requestApproval(product)" class="mt-1.5 w-full bg-yellow-500 text-white text-[11px] py-1 rounded font-bold shadow-sm"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>申請代購</button>
+              
+              <button v-if="product.finalPrice >= reviewThreshold" @click="requestApproval(product)" class="mt-1.5 w-full bg-yellow-500 text-white text-[11px] py-1 rounded font-bold shadow-sm"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>申請代購報價</button>
               <button v-else @click="addToCart(product)" class="mt-1.5 w-full bg-blue-600 text-white text-[11px] py-1 rounded font-bold shadow-sm">加購物車</button>
             </div>
           </div>
@@ -134,7 +156,10 @@
           <button @click="saveSearchHistory" class="bg-blue-600 text-white px-4 rounded-lg font-bold shadow-sm"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
         
-        <div v-if="!searchQuery" class="text-center text-gray-500 mt-10"><i class="fa-solid fa-magnifying-glass text-4xl mb-3 text-gray-300"></i><p>請輸入商品名稱或編號搜尋</p></div>
+        <div v-if="!searchQuery" class="text-center text-gray-500 mt-10">
+          <i class="fa-solid fa-magnifying-glass text-4xl mb-3 text-gray-300"></i><p>請輸入商品名稱或編號搜尋</p>
+        </div>
+
         <div v-else-if="filteredProducts.length === 0" class="text-center mt-8">
           <p class="text-gray-500 mb-6">商城內暫時找不到符合「{{ searchQuery }}」的商品</p>
           <div class="bg-blue-50 p-5 rounded-lg border border-blue-100 mx-2 shadow-sm">
@@ -143,7 +168,7 @@
              <p class="text-xs text-blue-600 mb-4 leading-relaxed">請輸入純數字好市多商品編號，系統將幫您抓取並套用代購匯率！</p>
              <button @click="tryFetchFromCostco" :disabled="isFetching" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition-all w-full disabled:bg-gray-400">
                <i class="fa-solid mr-2" :class="isFetching ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>
-               {{ isFetching ? '正在連線尋找中...' : '嘗試從雲端新增' }}
+               {{ isFetching ? '正在連線尋找中...' : '嘗試從好市多雲端新增' }}
              </button>
           </div>
         </div>
@@ -168,7 +193,10 @@
       </div>
 
       <div v-show="currentTab === 'cart'">
-        <div v-if="cart.length === 0" class="text-center text-gray-500 mt-10"><i class="fa-solid fa-cart-shopping text-4xl text-gray-300 mb-3"></i><p>購物車是空的</p><button @click="handleNav('home')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">去逛逛</button></div>
+        <div v-if="cart.length === 0" class="text-center text-gray-500 mt-10">
+          <i class="fa-solid fa-cart-shopping text-4xl text-gray-300 mb-3"></i><p>購物車是空的</p>
+          <button @click="handleNav('home')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">去逛逛</button>
+        </div>
         <div v-else>
           <div class="bg-white rounded-lg shadow p-3 mb-4">
             <div class="flex justify-between text-xs mb-1">
@@ -184,7 +212,7 @@
             <button @click="applyDiscount" class="bg-gray-800 text-white px-3 rounded font-bold text-sm">套用</button>
           </div>
           <div v-if="appliedDiscount" class="bg-green-50 border border-green-200 text-green-700 p-2 rounded mb-4 text-xs flex justify-between items-center">
-            <span><i class="fa-solid fa-ticket mr-1"></i>已套用「{{ appliedDiscount.code }}」折抵</span>
+            <span><i class="fa-solid fa-ticket mr-1"></i>已套用「{{ appliedDiscount.code }}」折扣</span>
             <button @click="appliedDiscount = null" class="text-red-500"><i class="fa-solid fa-xmark"></i></button>
           </div>
 
@@ -236,7 +264,7 @@
 
           <div class="fixed bottom-[60px] left-0 right-0 bg-white border-t p-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40">
             <div>
-              <p class="text-[11px] text-gray-500 font-mono">小計: ${{ cartSubtotal }} | 運費: ${{ currentShippingFee }} <span v-if="appliedDiscount" class="text-red-500">| 折扣</span></p>
+              <p class="text-[11px] text-gray-500 font-mono">小計: ${{ cartSubtotal }} | 運費: ${{ currentShippingFee }} <span v-if="appliedDiscount" class="text-red-500">| 折扣優惠</span></p>
               <p class="text-xl font-bold text-red-600">總額: ${{ cartTotal }}</p>
             </div>
             <button @click="openCheckout" class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-6 py-2.5 rounded-lg font-bold shadow-md">結帳去</button>
@@ -310,14 +338,28 @@
             <div>
               <label class="block text-xs text-gray-500 mb-1 font-bold">收件地址 <span class="text-red-500">*</span></label>
               <div class="flex gap-2 mb-2">
-                <select v-model="profileForm.city" @change="profileForm.district = twCities[profileForm.city][0]" required class="w-1/2 border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"><option value="" disabled>選擇縣市</option><option v-for="(dists, c) in twCities" :key="c" :value="c">{{ c }}</option></select>
-                <select v-model="profileForm.district" required class="w-1/2 border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"><option value="" disabled>選擇鄉鎮區</option><option v-if="profileForm.city" v-for="d in twCities[profileForm.city]" :key="d" :value="d">{{ d }}</option></select>
+                <select v-model="profileForm.city" @change="profileForm.district = twCities[profileForm.city][0]" required class="w-1/2 border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none">
+                  <option value="" disabled>選擇縣市</option><option v-for="(dists, c) in twCities" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <select v-model="profileForm.district" required class="w-1/2 border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none">
+                  <option value="" disabled>選擇鄉鎮區</option>
+                  <template v-if="profileForm.city && twCities[profileForm.city]">
+                    <option v-for="d in twCities[profileForm.city]" :key="d" :value="d">{{ d }}</option>
+                  </template>
+                </select>
               </div>
               <input v-model="profileForm.addressDetail" type="text" required class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none transition-colors" placeholder="街道門牌...">
             </div>
             <div>
               <label class="block text-xs text-gray-500 mb-1 font-bold">手機門號 <span class="text-red-500">*</span></label>
-              <input v-model="profileForm.phone" type="tel" required class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white outline-none transition-colors" placeholder="例如: 0912345678">
+              <div class="flex gap-2">
+                <input v-model="profileForm.phone" type="tel" :disabled="isPhoneVerified" required class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white outline-none disabled:opacity-50" placeholder="例如: 0912345678">
+                <button v-if="!isPhoneVerified" type="button" @click="sendPhoneCode" :disabled="phoneCountdown > 0" class="whitespace-nowrap px-3 bg-blue-100 text-blue-700 text-xs font-bold rounded hover:bg-blue-200 disabled:opacity-50">{{ phoneCountdown > 0 ? `${phoneCountdown}s 後重試` : '發送驗證碼' }}</button>
+                <span v-else class="whitespace-nowrap px-3 bg-green-100 text-green-700 text-xs font-bold rounded flex items-center"><i class="fa-solid fa-check mr-1"></i>已驗證</span>
+              </div>
+            </div>
+            <div v-if="!isPhoneVerified && sentCode" class="animate-pulse">
+              <input v-model="phoneInputCode" type="text" placeholder="請輸入4位數驗證碼" class="w-full border border-blue-300 rounded p-2 text-sm bg-blue-50 focus:bg-white outline-none mt-2 text-center tracking-widest font-bold">
             </div>
 
             <div class="mt-4 bg-gray-50 p-3 rounded border border-gray-200">
@@ -328,6 +370,7 @@
                 <span class="ml-2 text-xs font-bold text-red-600">我已詳細閱讀並同意遵守以上規範</span>
               </label>
             </div>
+
             <button type="submit" :disabled="isSavingProfile" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-2.5 rounded-lg mt-4 font-bold shadow-md disabled:bg-gray-400">
               <i v-if="isSavingProfile" class="fa-solid fa-spinner fa-spin mr-1"></i>
               {{ isSavingProfile ? '資料儲存中...' : (user?.name ? '儲存修改資料' : '確認註冊成為會員') }}
@@ -343,6 +386,10 @@
       </div>
 
       <div v-show="currentTab === 'admin'" class="pb-10">
+        <button @click="forceInitSpreadsheet" class="w-full bg-red-100 border border-red-300 text-red-700 py-2 rounded-lg font-bold text-xs mb-4 shadow-sm hover:bg-red-200">
+          <i class="fa-solid fa-wrench mr-1"></i>🔧 強制初始化/修復資料庫 (若有空白錯誤請點此)
+        </button>
+
         <div class="flex gap-2 mb-4 overflow-x-auto hide-scrollbar pb-2">
           <button @click="adminTab = 'dashboard'" :class="adminTab === 'dashboard' ? 'bg-red-600 text-white shadow' : 'bg-white text-gray-600 border'" class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">總覽</button>
           <button @click="adminTab = 'orders'" :class="adminTab === 'orders' ? 'bg-red-600 text-white shadow' : 'bg-white text-gray-600 border'" class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">訂單</button>
@@ -368,7 +415,13 @@
           <div class="space-y-2 mb-4">
             <div v-for="(cat, index) in adminCategories" :key="index" class="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-100 flex-wrap">
               <input v-model="cat.name" type="text" placeholder="分類名稱" class="w-1/4 border rounded p-1.5 text-sm">
-              <input v-model="cat.icon" type="text" placeholder="圖標網址" class="w-[60%] border rounded p-1.5 text-[10px]">
+              <input v-model="cat.icon" type="text" placeholder="圖片網址" class="w-[45%] border rounded p-1.5 text-[10px]">
+              
+              <label class="w-1/5 bg-gray-200 text-gray-700 text-center py-1.5 rounded cursor-pointer text-xs font-bold hover:bg-gray-300">
+                上傳圖片
+                <input type="file" @change="uploadCatIcon($event, cat)" accept="image/*" class="hidden">
+              </label>
+
               <button @click="adminCategories.splice(index,1)" class="text-red-500 px-2 w-[5%]"><i class="fa-solid fa-trash"></i></button>
             </div>
             <button @click="adminCategories.push({name:'', icon:''})" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-2 rounded text-sm hover:bg-gray-50"><i class="fa-solid fa-plus mr-1"></i>新增一組分類</button>
@@ -429,7 +482,7 @@
           <h4 class="font-bold text-sm text-gray-700 border-b pb-2 mb-2 mt-6">現有優惠券列表</h4>
           <div class="space-y-3">
             <div v-for="(d, idx) in discounts" :key="idx" class="border rounded p-3 relative bg-gray-50">
-              <button @click="discounts.splice(idx,1)" class="absolute top-2 right-2 text-red-500"><i class="fa-solid fa-trash"></i></button>
+              <button @click="deleteDiscount(idx)" class="absolute top-2 right-2 text-red-500"><i class="fa-solid fa-trash"></i></button>
               <p class="font-bold text-sm text-gray-800 mb-1">{{ d.name }} <span class="text-xs bg-white border border-gray-300 px-1.5 py-0.5 rounded ml-1">{{ d.code }}</span></p>
               <p class="text-[10px] text-gray-500 mb-1 font-mono">{{ d.startDate }} ~ {{ d.endDate }}</p>
               <div class="flex gap-2 text-xs font-bold mt-2">
@@ -498,7 +551,7 @@
           <h3 class="font-bold mb-3">系統操作日誌</h3>
           <ul class="text-[11px] space-y-3 text-gray-600">
             <li v-for="(log, i) in systemLogs" :key="i" class="border-b border-gray-100 pb-2">
-              <div class="flex justify-between mb-1"><span class="font-bold text-gray-800"><i class="fa-solid fa-user-shield mr-1 text-gray-400"></i>{{log.admin}}</span><span class="text-gray-400 font-mono">{{log.time}}</span></div>
+              <div class="flex justify-between mb-1"><span class="font-bold text-gray-800"><i class="fa-solid fa-user-shield mr-1 text-gray-400"></i>{{log.admin}}</span><span class="text-gray-400 font-mono">{{new Date(log.time).toLocaleDateString()}} {{new Date(log.time).toLocaleTimeString()}}</span></div>
               <p class="leading-relaxed"><span class="bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded mr-1 font-bold">{{log.action}}</span> {{log.details}}</p>
             </li>
           </ul>
@@ -606,7 +659,8 @@
             <div class="text-xs leading-relaxed text-gray-600 space-y-4 costco-html border-t pt-3 border-dashed border-gray-200">
               <div v-if="selectedProduct?.shipping" v-html="selectedProduct.shipping"></div>
               <div v-else>
-                <div class="flex items-start gap-2 mb-2"><i class="fa-solid fa-truck text-blue-500 mt-0.5 text-lg"></i><p>依商品出貨規定為主。</p></div>
+                <div class="flex items-start gap-2 mb-2"><i class="fa-solid fa-truck text-blue-500 mt-0.5 text-lg"></i><p>本商品由好市多直接出貨，預計完成匯款後 <strong>3-5 個工作天</strong>內送達。</p></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-rotate-left text-red-400 mt-0.5 text-lg"></i><p>代購商品屬委任契約，除重大瑕疵外，<strong>不提供退換貨服務</strong>。</p></div>
               </div>
             </div>
           </div>
@@ -731,7 +785,7 @@
 
   <script>
     // 🚨 這裡請貼上您在 GAS 部署「網頁應用程式」所得到的 URL
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxoaCqrOXXwU-BcDksbsa2VLZqnU51T-pCNKeckn6zgcnXs4t0Qu1mdlXsmLW1VOilShg/exec';
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxoaCqrOXXwU-BcDksbsa2VLZqnU51T-pCNKeckn6zgcnXs4t0Qu1mdlXsmLW1VOilShg/exec'; 
 
     const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
@@ -761,125 +815,6 @@
         const viewMode = ref('grid');
         const sortOrder = ref('default');
         
-        const products = ref([]);
-        const cart = ref([]);
-        const discounts = ref([]); 
-        const discountInput = ref('');
-        const appliedDiscount = ref(null);
-
-        const discountForm = ref({ code: '', name: '', startDate: '', endDate: '', type: 'deduct', value: '', minSpend: '', applyTo: 'ALL', totalQty: '', remQty: '', desc: '', limitPerUser: 1 });
-
-        const cartSubtotal = computed(() => cart.value.reduce((a, c) => a + c.finalPrice * c.quantity, 0));
-        const freeShippingThreshold = computed(() => parseInt(adminSettings.value['免運門檻']) || 2000);
-        const currentShippingFee = computed(() => cartSubtotal.value >= freeShippingThreshold.value ? 0 : (parseInt(adminSettings.value['基本運費']) || 100));
-        
-        const cartTotal = computed(() => {
-          let total = cartSubtotal.value + currentShippingFee.value;
-          if (appliedDiscount.value) {
-            if(appliedDiscount.value.type === 'deduct') total -= appliedDiscount.value.value;
-            else if(appliedDiscount.value.type === 'discount') total = total * appliedDiscount.value.value;
-          }
-          return Math.max(0, Math.round(total));
-        });
-
-        const reviewThreshold = computed(() => parseInt(adminSettings.value['需審核金額門檻']) || 5000);
-
-        // 💡 透過 Fetch API 呼叫 GAS
-        const callAPI = async (action, payload = {}) => {
-          try {
-            const res = await fetch(GAS_API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 💡 繞過 CORS 限制的關鍵
-              body: JSON.stringify({ action, payload })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.message);
-            if (data.data && data.data.success === false) throw new Error(data.data.message);
-            return data.data;
-          } catch (e) {
-            showAlert('網路錯誤', e.message, 'error');
-            throw e;
-          }
-        };
-
-        const preloadImages = async (urls) => {
-          const promises = urls.slice(0, 30).map(url => new Promise((resolve) => {
-            const img = new Image(); img.onload = resolve; img.onerror = resolve; img.src = url;
-          }));
-          await Promise.all(promises);
-        };
-
-        const loadData = async () => {
-          loadingProgress.value = 20; loadingText.value = '連線至雲端資料庫...';
-          try {
-            const data = await callAPI('init', { lineId: liffProfile.value.userId });
-            loadingProgress.value = 60; loadingText.value = '解析資料與優惠活動...';
-            
-            adminSettings.value = data.settings;
-            categories.value = [{name:'全部', icon:''}].concat(data.categories);
-            products.value = data.products;
-            discounts.value = data.discounts;
-            
-            if (isGuest.value) {
-              loadingProgress.value = 100; loadingText.value = '載入完成，準備進入！';
-              setTimeout(() => { loading.value = false; }, 600);
-              return;
-            }
-
-            user.value = data.user;
-            orders.value = data.orders;
-            
-            if (user.value) {
-               // 解析地址與自動帶入...
-               profileForm.value.name = user.value.name;
-               profileForm.value.phone = user.value.phone;
-               // ... 簡化處理以維持字數，完整版可用字串比對
-               isPhoneVerified.value = true;
-               if(user.value.isAdmin) adminLoadData();
-            }
-
-            loadingProgress.value = 80; loadingText.value = '預載商品圖片...';
-            const imgUrls = products.value.slice(0, 20).map(p => p.image).filter(u => u);
-            await preloadImages(imgUrls);
-
-            loadingProgress.value = 100; loadingText.value = '載入完成！';
-            setTimeout(() => { loading.value = false; checkProfileCompletion(); }, 500);
-          } catch (e) {
-            loadingText.value = '載入失敗，請點擊修復';
-          }
-        };
-
-        const initLiff = async () => {
-          try {
-            await liff.init({ liffId: "2009521621-rw3SYhn3" });
-            if (!liff.isLoggedIn()) { 
-              if (liff.isInClient()) { liff.login(); return; }
-              else { isGuest.value = true; showGuestPopup.value = true; loadData(); return; }
-            }
-            liffProfile.value = await liff.getProfile();
-            loadData();
-          } catch (err) { 
-            console.error(err); isGuest.value = true; showGuestPopup.value = true; loadData(); 
-          }
-        };
-
-        onMounted(() => { initLiff(); });
-
-        const forceInitSpreadsheet = async () => {
-          loading.value = true; loadingText.value = '強制修復中...';
-          await callAPI('forceInitSpreadsheet');
-          showAlert("修復完成", "資料表已成功修復補齊！頁面即將重新載入。", "success").then(() => window.location.reload());
-        };
-
-        const homeFilteredProducts = computed(() => {
-          let res = products.value.filter(p => !p.isDelisted);
-          if (selectedCategory.value !== '全部') res = res.filter(p => p.categories.includes(selectedCategory.value));
-          if (sortOrder.value === 'priceAsc') res.sort((a,b) => a.finalPrice - b.finalPrice);
-          if (sortOrder.value === 'priceDesc') res.sort((a,b) => b.finalPrice - a.finalPrice);
-          return res;
-        });
-
-        // 💡 其他 Vue 變數 (保持與之前版本一致)
         const twCities = ref({
           "基隆市": ["仁愛區", "信義區", "中正區", "中山區", "安樂區", "暖暖區", "七堵區"],
           "台北市": ["中正區", "大同區", "中山區", "松山區", "大安區", "萬華區", "信義區", "士林區", "北投區", "內湖區", "南港區", "文山區"],
@@ -892,7 +827,7 @@
           "彰化縣": ["彰化市", "鹿港鎮", "和美鎮", "線西鄉", "伸港鄉", "福興鄉", "秀水鄉", "花壇鄉", "芬園鄉", "員林市", "大村鄉", "埔鹽鄉", "埔心鄉", "永靖鄉", "社頭鄉", "二水鄉", "田尾鄉", "埤頭鄉", "芳苑鄉", "大城鄉", "竹塘鄉", "二林鎮", "溪州鄉"],
           "南投縣": ["南投市", "埔里鎮", "草屯鎮", "竹山鎮", "集集鎮", "名間鄉", "鹿谷鄉", "中寮鄉", "魚池鄉", "國姓鄉", "水里鄉", "信義鄉", "仁愛鄉"],
           "雲林縣": ["斗六市", "斗南鎮", "虎尾鎮", "西螺鎮", "土庫鎮", "北港鎮", "古坑鄉", "大埤鄉", "莿桐鄉", "林內鄉", "二崙鄉", "崙背鄉", "麥寮鄉", "東勢鄉", "褒忠鄉", "臺西鄉", "元長鄉", "四湖鄉", "口湖鄉", "水林鄉"],
-          "嘉義縣": ["太保市", "朴子市", "布袋鎮", "大林鎮", "民雄鄉", "溪口鄉", "新港鄉", "六腳鄉", "東石鄉", "義竹鄉", "鹿草鄉", "水上鄉", "中埔鄉", "竹崎鄉", "梅山鄉", "番路鄉", "大埔鄉", "阿里山鄉"],
+          "嘉義縣": ["太保市", "朴子市", "布袋鎮", "大林鎮", "民雄鄉", "溪口鄉", "新港鄉", "六脚鄉", "東石鄉", "義竹鄉", "鹿草鄉", "水上鄉", "中埔鄉", "竹崎鄉", "梅山鄉", "番路鄉", "大埔鄉", "阿里山鄉"],
           "嘉義市": ["東區", "西區"],
           "台南市": ["中西區", "東區", "南區", "北區", "安平區", "安南區", "永康區", "歸仁區", "新化區", "左鎮區", "玉井區", "楠西區", "南化區", "仁德區", "關廟區", "龍崎區", "官田區", "麻豆區", "佳里區", "西港區", "七股區", "將軍區", "學甲區", "北門區", "新營區", "後壁區", "白河區", "東山區", "六甲區", "下營區", "柳營區", "鹽水區", "善化區", "大內區", "山上區", "新市區", "安定區"],
           "高雄市": ["新興區", "前金區", "苓雅區", "鹽埕區", "鼓山區", "旗津區", "前鎮區", "三民區", "楠梓區", "小港區", "左營區", "仁武區", "大社區", "岡山區", "橋頭區", "燕巢區", "田寮區", "阿蓮區", "路竹區", "湖內區", "茄萣區", "彌陀區", "永安區", "梓官區", "林園區", "大寮區", "鳳山區", "鳥松區", "大樹區", "旗山區", "美濃區", "六龜區", "內門區", "杉林區", "甲仙區", "桃源區", "那瑪夏區", "茂林區"],
@@ -905,16 +840,65 @@
           "連江縣": ["南竿鄉", "北竿鄉", "莒光鄉", "東引鄉"]
         });
 
-        const favorites = ref(JSON.parse(localStorage.getItem('myFavorites') || '[]'));
-        const searchHistory = ref(JSON.parse(localStorage.getItem('searchHistory') || '[]'));
-        const orderFilter = ref('全部');
-        const addonProducts = computed(() => { const cartIds = cart.value.map(i=>i.id); return products.value.filter(p=>!p.isDelisted && p.finalPrice<300 && p.stock>0 && !cartIds.includes(p.id)).slice(0,5); });
-        const searchQuery = ref('');
-        const filteredProducts = computed(() => { const q = searchQuery.value.trim().toLowerCase(); if(!q) return []; return products.value.filter(p => !p.isDelisted && (p.name.toLowerCase().includes(q) || p.id.toString().includes(q))); });
+        let initialFavs = [];
+        let initialSearch = [];
+        try { initialFavs = JSON.parse(localStorage.getItem('myFavorites') || '[]'); } catch(e) {}
+        try { initialSearch = JSON.parse(localStorage.getItem('searchHistory') || '[]'); } catch(e) {}
         
+        const favorites = ref(initialFavs); 
+        const searchHistory = ref(initialSearch);
+        
+        const products = ref([]);
+        const cart = ref([]);
+        const orders = ref([]);
+        const orderFilter = ref('全部');
+        
+        const cartSubtotal = computed(() => cart.value.reduce((acc, curr) => acc + curr.finalPrice * curr.quantity, 0));
+        const discountInput = ref('');
+        const appliedDiscount = ref(null);
+        const availableDiscountCodes = ref([]); 
+        
+        const cartTotal = computed(() => {
+          let total = cartSubtotal.value;
+          if (appliedDiscount.value) {
+            if(appliedDiscount.value.type === 'deduct') total -= appliedDiscount.value.value;
+            else if(appliedDiscount.value.type === 'discount') total = total * appliedDiscount.value.value;
+          }
+          return Math.max(0, Math.round(total));
+        });
+
+        const reviewThreshold = computed(() => parseInt(adminSettings.value['需審核金額門檻']) || 5000);
+
+        const homeFilteredProducts = computed(() => {
+          let res = products.value.filter(p => !p.isDelisted);
+          if (selectedCategory.value === '❤️ 收藏') {
+            res = res.filter(p => favorites.value.includes(p.id));
+          } else if (selectedCategory.value !== '全部' && selectedCategory.value !== '') {
+            res = res.filter(p => p.categories.includes(selectedCategory.value));
+          }
+          if (sortOrder.value === 'priceAsc') res.sort((a,b) => a.finalPrice - b.finalPrice);
+          if (sortOrder.value === 'priceDesc') res.sort((a,b) => b.finalPrice - a.finalPrice);
+          return res;
+        });
+
+        const addonProducts = computed(() => {
+          const cartIds = cart.value.map(item => item.id);
+          return products.value.filter(p => !p.isDelisted && p.finalPrice < 300 && p.stock > 0 && !cartIds.includes(p.id)).slice(0, 5);
+        });
+
+        const searchQuery = ref('');
+        const filteredProducts = computed(() => {
+          const query = searchQuery.value.trim().toLowerCase();
+          if (!query) return [];
+          let res = products.value.filter(p => !p.isDelisted && (p.name.toLowerCase().includes(query) || (p.id && p.id.toString().includes(query))));
+          if (sortOrder.value === 'priceAsc') res.sort((a,b) => a.finalPrice - b.finalPrice);
+          if (sortOrder.value === 'priceDesc') res.sort((a,b) => b.finalPrice - a.finalPrice);
+          return res;
+        });
+
         const showCheckoutConfirm = ref(false);
         const orderNotes = ref('');
-        const agreeToTerms = ref(false);
+        const agreeToTerms = ref(false); 
         const agreeProfileTerms = ref(false);
 
         const showPaymentModal = ref(false);
@@ -926,6 +910,7 @@
         const phoneCountdown = ref(0);
         const sentCode = ref('');
         const phoneInputCode = ref('');
+        const isSavingProfile = ref(false);
 
         const adminTab = ref('dashboard');
         const allOrders = ref([]);
@@ -938,8 +923,13 @@
         const showAdminProductEditor = ref(false);
         const editProdForm = ref({ id: '', name: '', originalPrice: '', finalPrice: '', categoriesStr: '', isDelisted: false });
         const adminProductSearch = ref('');
-        const adminFilteredProducts = computed(() => { const q = adminProductSearch.value.trim().toLowerCase(); if(!q) return products.value.slice(0, 50); return products.value.filter(p => p.name.toLowerCase().includes(q) || p.id.toString().includes(q)).slice(0, 50); });
+        const adminFilteredProducts = computed(() => {
+          const q = adminProductSearch.value.trim().toLowerCase();
+          if(!q) return products.value.slice(0, 50); 
+          return products.value.filter(p => p.name.toLowerCase().includes(q) || (p.id && p.id.toString().includes(q))).slice(0, 50);
+        });
 
+        const discountForm = ref({ code: '', name: '', startDate: '', endDate: '', type: 'deduct', value: '', minSpend: '', applyTo: 'ALL', totalQty: '', remQty: '', desc: '', limitPerUser: 1 });
         const discountCodesList = ref([]); 
         const customProdForm = ref({ name: '', originalPrice: '', finalPrice: '', image: '', description: '', specs: '' });
 
@@ -958,180 +948,512 @@
         const shippingTrackingCode = ref('');
         const orderToShip = ref(null);
 
-        // 💡 函數實作 (替換原本的 google.script.run 為 callAPI)
-        const handleNav = (tab) => { if (isGuest.value && (tab === 'cart' || tab === 'orders' || tab === 'profile')) { showGuestPopup.value = true; return; } currentTab.value = tab; };
-        const checkProfileCompletion = async () => { if (isGuest.value) return; if (!user.value || !user.value.name || !user.value.phone || !user.value.address) { await showAlert('歡迎！', '請先填寫真實收件資料。', 'info'); currentTab.value = 'profile'; } };
+        const freeShippingThreshold = computed(() => parseInt(adminSettings.value['免運門檻']) || 2000);
+        const baseShippingFee = computed(() => parseInt(adminSettings.value['基本運費']) || 100);
+        const currentShippingFee = computed(() => cartSubtotal.value >= freeShippingThreshold.value ? 0 : baseShippingFee.value);
+
+        // 💡 Fetch API 核心通訊函數
+        const callAPI = async (action, payload = {}) => {
+          try {
+            const res = await fetch(GAS_API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+              body: JSON.stringify({ action, payload })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            if (data.data && data.data.success === false) throw new Error(data.data.message);
+            return data.data;
+          } catch (e) {
+            showAlert('網路錯誤', e.message, 'error');
+            throw e;
+          }
+        };
+
+        const handleNav = (tab) => {
+          if (isGuest.value && (tab === 'cart' || tab === 'orders' || tab === 'profile')) { showGuestPopup.value = true; return; }
+          currentTab.value = tab;
+        };
+
+        const checkProfileCompletion = async () => {
+          if (isGuest.value) return;
+          if (!user.value || !user.value.name || !user.value.phone || !user.value.address) {
+            await showAlert('歡迎來到好事多會發生！', '為了確保您的購物體驗與物流順暢，請先填寫您的真實收件資料。', 'info');
+            currentTab.value = 'profile';
+          }
+        };
+
+        const initLiff = async () => {
+          loadingProgress.value = 10; loadingText.value = '登入 LINE 驗證...';
+          try {
+            await liff.init({ liffId: "2009521621-rw3SYhn3" });
+            if (!liff.isLoggedIn()) {
+              if (liff.isInClient()) { liff.login(); return; }
+              else { isGuest.value = true; showGuestPopup.value = true; loadData(); return; }
+            }
+            const profile = await liff.getProfile();
+            const email = liff.getDecodedIDToken()?.email || '';
+            liffProfile.value = { ...profile, email };
+            loadData();
+          } catch (err) { 
+            console.error(err);
+            isGuest.value = true; showGuestPopup.value = true; loadData(); 
+          }
+        };
+
+        const forceInitSpreadsheet = async () => {
+          loading.value = true; loadingText.value = '強制修復中...';
+          await callAPI('forceInitSpreadsheet');
+          showAlert("修復完成", "資料表已成功修復補齊！頁面即將重新載入。", "success").then(() => window.location.reload());
+        };
+
+        const preloadImages = async (urls) => {
+          const promises = urls.slice(0, 30).map(url => new Promise((resolve) => {
+            const img = new Image(); img.onload = resolve; img.onerror = resolve; img.src = url;
+          }));
+          await Promise.all(promises);
+        };
+
+        const loadData = async () => {
+          loadingProgress.value = 30; loadingText.value = '讀取系統與費率設定...';
+          try {
+            const data = await callAPI('init', { lineId: liffProfile.value?.userId || '' });
+            loadingProgress.value = 60; loadingText.value = '解析資料與優惠活動...';
+            
+            adminSettings.value = data.settings;
+            categories.value = [{name:'全部', icon:''}].concat(data.categories);
+            adminCategories.value = JSON.parse(JSON.stringify(data.categories));
+            products.value = data.products;
+            discounts.value = data.discounts;
+            availableDiscountCodes.value = data.discounts;
+            discountCodesList.value = data.discounts;
+
+            if (isGuest.value) {
+              loadingProgress.value = 80; loadingText.value = '預載商品圖片...';
+              const imgUrls = products.value.slice(0, 20).map(p => p.image).filter(u => u);
+              await preloadImages(imgUrls);
+              loadingProgress.value = 100; loadingText.value = '載入完成，準備進入！';
+              setTimeout(() => { loading.value = false; }, 600);
+              return;
+            }
+
+            loadingProgress.value = 85; loadingText.value = '同步個人會員與訂單...';
+            user.value = data.user;
+            orders.value = data.orders;
+
+            if (user.value) {
+              let fullAddress = user.value.address || '';
+              let matchedCity = '', matchedDist = '';
+              for (let c in twCities.value) {
+                if (fullAddress.startsWith(c)) {
+                  matchedCity = c; fullAddress = fullAddress.substring(c.length);
+                  const dists = twCities.value[c];
+                  for (let d of dists) { if (fullAddress.startsWith(d)) { matchedDist = d; fullAddress = fullAddress.substring(d.length); break; } }
+                  break;
+                }
+              }
+              profileForm.value = { name: user.value.name, phone: user.value.phone, city: matchedCity, district: matchedDist, addressDetail: fullAddress };
+              isPhoneVerified.value = !!user.value.phone; 
+              if(user.value.isAdmin) adminLoadData(); 
+            }
+
+            loadingProgress.value = 95; loadingText.value = '預載商品圖片...';
+            const imgUrls = products.value.slice(0, 20).map(p => p.image).filter(u => u);
+            await preloadImages(imgUrls);
+
+            loadingProgress.value = 100; loadingText.value = '載入完成！';
+            setTimeout(() => { loading.value = false; checkProfileCompletion(); }, 600);
+
+          } catch (e) {
+            loadingText.value = '載入失敗，請重試或修復';
+          }
+        };
 
         const loadOrders = async () => { orders.value = await callAPI('getOrders', { lineId: user.value.lineId }); };
-        
-        const filteredUserOrders = computed(() => { if (orderFilter.value === '全部') return orders.value; return orders.value.filter(o => o.status === orderFilter.value); });
-        const toggleFavorite = (p) => { const idx = favorites.value.indexOf(p.id); if (idx > -1) favorites.value.splice(idx, 1); else favorites.value.push(p.id); localStorage.setItem('myFavorites', JSON.stringify(favorites.value)); };
+        onMounted(() => { initLiff(); });
+
+        const filteredUserOrders = computed(() => {
+          if (orderFilter.value === '全部') return orders.value;
+          return orders.value.filter(o => o.status === orderFilter.value);
+        });
+
+        const toggleFavorite = (p) => {
+          const idx = favorites.value.indexOf(p.id);
+          if (idx > -1) favorites.value.splice(idx, 1); else favorites.value.push(p.id);
+          localStorage.setItem('myFavorites', JSON.stringify(favorites.value));
+        };
         const isFavorite = (id) => favorites.value.includes(id);
 
         const tryFetchFromCostco = async () => {
-          const codeMatch = searchQuery.value.match(/\d+/);
-          if (!codeMatch) return showAlert('格式錯誤', '請輸入純數字編號', 'error');
+          const query = searchQuery.value.trim();
+          const codeMatch = query.match(/\d+/);
+          if (!codeMatch) { await showAlert('格式錯誤', '請輸入純數字商品編號 (例如: 143549) 才能從雲端新增喔！', 'error'); return; }
+          const productCode = codeMatch[0]; 
           isFetching.value = true;
           try {
-            const msg = await callAPI('fetchCostco', { code: codeMatch[0] });
+            const res = await callAPI('fetchCostco', { code: productCode });
             isFetching.value = false;
-            await showAlert('完成', msg.message, 'success');
-            loadData(); searchQuery.value = '';
+            await showAlert('新增成功', res.message + '\n\n系統將重新載入最新資料！', 'success');
+            loadData(); searchQuery.value = ''; 
           } catch(e) { isFetching.value = false; }
         };
 
-        const formatCountdown = (endTime) => { const diff = endTime - Date.now(); if (diff <= 0) return '已結束'; return `${String(Math.floor(diff/3600000)).padStart(2,'0')}:${String(Math.floor((diff%3600000)/60000)).padStart(2,'0')}:${String(Math.floor((diff%60000)/1000)).padStart(2,'0')}`; };
+        const formatCountdown = (endTime) => {
+          if (!endTime) return '';
+          const diff = endTime - Date.now();
+          if (diff <= 0) return '已結束';
+          const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+          const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+          const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+          return `${h}:${m}:${s}`;
+        };
+
         const openProductDetail = (p) => { selectedProduct.value = p; detailTab.value = 'specs'; showProductDetail.value = true; };
-        const tryOpenHistoryProduct = (pid) => { const p = products.value.find(prod => prod.id === pid); if (p) openProductDetail(p); else showAlert('提示', '商品已無法追溯', 'info'); };
+        
+        const tryOpenHistoryProduct = (pid) => {
+          const p = products.value.find(prod => prod.id === pid);
+          if (p) openProductDetail(p);
+          else showAlert('提示', '此商品資訊已無法追溯', 'info');
+        };
+
         const openLightbox = (url) => { if(url) lightboxImage.value = url; };
         
         const addToCart = async (p) => {
           if(isGuest.value) { showGuestPopup.value = true; return; }
-          if(p.isDelisted) return showAlert('提示', '商品已下架', 'error');
+          if(p.isDelisted) return await showAlert('提示', '該商品已下架無法購買', 'error');
           const existing = cart.value.find(item => item.id === p.id);
-          if (existing) { if (existing.quantity + 1 > p.maxQty) return showAlert('限購', `最多 ${p.maxQty} 件`, 'info'); existing.quantity++; } 
-          else { cart.value.push({...p, quantity: p.minQty}); }
-          if(!showProductDetail.value) { sysAlert.value = { show: true, title: '加入成功', message: `${p.name} 已加入`, type: 'success' }; setTimeout(() => sysAlert.value.show = false, 1500); }
+          if (existing) {
+            if (existing.quantity + 1 > p.maxQty) return await showAlert('限購提示', `此商品最多只能購買 ${p.maxQty} 件喔！`, 'info');
+            existing.quantity++;
+          } else {
+            cart.value.push({...p, quantity: p.minQty});
+          }
+          if(!showProductDetail.value) {
+            sysAlert.value = { show: true, title: '加入成功', message: `${p.name} 已加入購物車`, type: 'success', showCancel: false };
+            setTimeout(() => { if(sysAlert.value.show) sysAlert.value.show = false; }, 1500);
+          }
         };
 
         const updateQuantity = async (idx, delta) => {
-           const item = cart.value[idx]; const newQ = item.quantity + delta;
-           if (newQ > item.maxQty) return showAlert('限購', `最多 ${item.maxQty} 件`, 'info');
-           if (newQ < item.minQty) { if (newQ === 0) return removeFromCart(idx); return showAlert('起購', `最少 ${item.minQty} 件`, 'info'); }
+           const item = cart.value[idx];
+           const newQ = item.quantity + delta;
+           if (newQ > item.maxQty) return await showAlert('限購提示', `此商品最多只能購買 ${item.maxQty} 件喔！`, 'info');
+           if (newQ < item.minQty) {
+              if (newQ === 0) return removeFromCart(idx); 
+              return await showAlert('最低購買量', `此商品最少需要購買 ${item.minQty} 件喔！`, 'info');
+           }
            item.quantity = newQ;
         };
 
         const requestApproval = async (p) => {
            if(isGuest.value) { showGuestPopup.value = true; return; }
-           contactForm.value.message = `我想申請代購高單價商品：\n【${p.id}】${p.name}\n請報價，謝謝！`;
-           currentTab.value = 'profile'; setTimeout(() => showAlert('已帶入資訊', '請送出留言給版主審核！', 'success'), 300);
+           contactForm.value.message = `版主您好，我想申請代購此高單價商品：\n【${p.id}】${p.name}\n網址：https://www.costco.com.tw/p/${p.id}\n請協助審核並報價，謝謝！`;
+           currentTab.value = 'profile';
+           setTimeout(() => { showAlert('已為您帶入商品資訊', '請點擊下方的「送出留言給版主」傳送進行審核！', 'success'); }, 300);
         };
         
         const removeFromCart = (index) => {
-          const item = cart.value[index]; cart.value.splice(index, 1);
+          const item = cart.value[index];
+          cart.value.splice(index, 1);
           if (undoToast.value.timeout) clearTimeout(undoToast.value.timeout);
-          undoToast.value = { show: true, item, index, timeout: setTimeout(() => undoToast.value.show = false, 5000) };
+          undoToast.value = { show: true, item, index, timeout: setTimeout(() => { undoToast.value.show = false; }, 5000) };
           if(cart.value.length === 0) appliedDiscount.value = null;
         };
-        const undoRemove = () => { if (undoToast.value.item) { cart.value.splice(undoToast.value.index, 0, undoToast.value.item); undoToast.value.show = false; } };
-        const clearCart = async () => { if(await showAlert('清空', '確定清空購物車？', 'info', true)) { cart.value = []; appliedDiscount.value = null; } };
-
-        const applyDiscount = async () => {
-          if (!discountInput.value) return showAlert('提示', '請輸入折扣碼', 'error');
-          const codeStr = discountInput.value.trim().toUpperCase();
-          const found = discounts.value.find(c => c.code === codeStr);
-          if (!found) return showAlert('無效', '找不到此代碼', 'error');
-          if (cartSubtotal.value < found.minSpend) return showAlert('未達門檻', `需滿 $${found.minSpend}`, 'info');
-          appliedDiscount.value = found; discountInput.value = '';
-          showAlert('成功', `已套用優惠！`, 'success');
-        };
-
-        const saveSearchHistory = () => { if (searchQuery.value && !searchHistory.value.includes(searchQuery.value)) { searchHistory.value.unshift(searchQuery.value); if (searchHistory.value.length > 10) searchHistory.value.pop(); localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value)); } };
-        const sendPhoneCode = async () => {
-          if (!/^09\d{8}$/.test(profileForm.value.phone)) return showAlert('錯誤', '請輸入正確的 09 開頭手機', 'error');
-          phoneCountdown.value = 60; const timer = setInterval(() => { phoneCountdown.value--; if (phoneCountdown.value <= 0) clearInterval(timer); }, 1000);
-          setTimeout(async () => { const mockCode = Math.floor(1000 + Math.random() * 9000).toString(); sentCode.value = mockCode; showAlert('【簡訊驗證碼】', `您的驗證碼為：${mockCode}`, 'info'); }, 1000);
-        };
-
-        const saveProfile = async () => {
-          if (!profileForm.value.city || !profileForm.value.district || !profileForm.value.addressDetail) return showAlert('錯誤', '請填寫完整地址', 'error');
-          if (!isPhoneVerified.value) { if (phoneInputCode.value !== sentCode.value || !sentCode.value) return showAlert('錯誤', '驗證碼錯誤', 'error'); isPhoneVerified.value = true; }
-          if (!agreeProfileTerms.value && !user.value?.name) return showAlert('錯誤', '請勾選同意註冊需知', 'error');
-          profileForm.value.address = profileForm.value.city + profileForm.value.district + profileForm.value.addressDetail;
-          const userData = { ...profileForm.value, lineId: liffProfile.value.userId, nickname: liffProfile.value.displayName, avatar: liffProfile.value.pictureUrl, email: liffProfile.value.email || '' };
-          await callAPI('registerUser', userData);
-          user.value = {...user.value, ...userData};
-          showAlert('成功', '資料已儲存', 'success');
-          if(currentTab.value === 'profile') currentTab.value = 'home';
-        };
-
-        const openCheckout = async () => { if (!user.value?.name || !user.value?.phone) { await showAlert('提示', '請填寫收件資料', 'error'); currentTab.value = 'profile'; return; } agreeToTerms.value = false; showCheckoutConfirm.value = true; };
-        const checkout = async () => {
-          if (!agreeToTerms.value) return showAlert('錯誤', '請詳閱並勾選同意購買需知', 'error');
-          const orderData = { lineId: user.value.lineId, name: user.value.name, phone: user.value.phone, address: user.value.address, items: cart.value, totalAmount: cartTotal.value, notes: orderNotes.value, discountCode: appliedDiscount.value ? appliedDiscount.value.code : '', discountAmount: appliedDiscount.value ? (appliedDiscount.value.type==='deduct'?appliedDiscount.value.value : cartSubtotal.value*(1-appliedDiscount.value.value)) : 0 };
-          const res = await callAPI('createOrder', orderData);
-          showCheckoutConfirm.value = false; cart.value = []; appliedDiscount.value = null; currentTab.value = 'orders'; loadData();
-          if (typeof confetti === 'function') confetti(); showAlert('訂單成立', '請查看匯款帳號並回報', 'success');
-        };
-
-        const showPaymentForm = (order) => { selectedOrder.value = order; showPaymentModal.value = true; };
-        const submitPayment = async () => {
-          if (!/^\d{5}$/.test(paymentForm.value.accountLast5)) return showAlert('錯誤', '請輸入5碼數字', 'error');
-          const info = `帳號後五碼: ${paymentForm.value.accountLast5}, 日期: ${paymentForm.value.date}`;
-          await callAPI('submitPayment', { orderId: selectedOrder.value.orderId, info });
-          showPaymentModal.value = false; showAlert('成功', '已通知賣家對帳', 'success'); loadData();
-        };
-
-        const completeOrder = async (order) => { if(await showAlert('確認', '收到商品無誤？', 'info', true)) { await callAPI('updateOrderStatus', { orderId: order.orderId, status: '已完成' }); loadData(); } };
-        const openReviewForm = (item) => { reviewTargetItem.value = item; reviewForm.value = { rating: 5, comment: '' }; showReviewForm.value = true; };
-        const submitReview = async () => {
-          if(!reviewForm.value.comment.trim()) return showAlert('提示', '請輸入評價', 'info');
-          await callAPI('submitReview', { productId: reviewTargetItem.value.id, rating: reviewForm.value.rating, comment: reviewForm.value.comment, lineId: user.value.lineId, name: user.value.name });
-          showReviewForm.value = false; showAlert('成功', '感謝您的評價！', 'success'); loadData();
-        };
-
-        const submitContact = async () => {
-          if(!contactForm.value.message) return showAlert('提示', '請輸入留言', 'error');
-          await callAPI('submitContactMessage', { lineId: user.value?.lineId, name: user.value?.name, message: contactForm.value.message });
-          showAlert('成功', '留言已送出', 'success'); contactForm.value.message = '';
-        };
-
-        const userCancelOrder = async (orderId) => {
-          if (await showAlert('取消', '確定取消訂單？', 'error', true)) {
-            await callAPI('cancelOrder', { orderId, lineId: user.value.lineId });
-            showAlert('已取消', '訂單已取消', 'success'); loadData();
+        const undoRemove = () => {
+          if (undoToast.value.item) {
+            cart.value.splice(undoToast.value.index, 0, undoToast.value.item);
+            undoToast.value.show = false;
+            if (undoToast.value.timeout) clearTimeout(undoToast.value.timeout);
           }
         };
 
-        // 管理員 API 功能
-        const adminLoadData = async () => {
-          const res = await callAPI('adminLoadData');
-          allOrders.value = res.orders; adminStats.value = res.stats; adminMembers.value = res.members; systemLogs.value = res.logs; renderChart();
+        const clearCart = async () => {
+          const confirmed = await showAlert('清空購物車', '確定要清空購物車內的所有商品嗎？', 'info', true);
+          if(confirmed) { cart.value = []; appliedDiscount.value = null; }
         };
-        const forceRunScraper = async () => { if (await showAlert('維護', '背景排程將啟動，網頁將重載', 'info', true)) { await callAPI('forceRunScraper'); window.location.reload(); } };
-        const saveAdminSettings = async () => { await callAPI('saveSystemSettings', adminSettings.value); showAlert('成功', '設定已儲存', 'success'); loadData(); };
+
+        const applyDiscount = async () => {
+          if (!discountInput.value) return await showAlert('提示', '請輸入折扣碼', 'error');
+          const codeStr = discountInput.value.trim().toUpperCase();
+          const found = availableDiscountCodes.value.find(c => c.code === codeStr);
+          if (!found) return await showAlert('無效代碼', '找不到此折扣碼或已停用。', 'error');
+          const now = new Date().toISOString().split('T')[0];
+          if (now < found.startDate || now > found.endDate) return await showAlert('無效', '不在活動期間內', 'error');
+          if (cartSubtotal.value < found.minSpend) return await showAlert('未達門檻', `此折扣碼需滿 $${found.minSpend} 才能使用喔！`, 'info');
+          if (found.remQty <= 0) return await showAlert('已發完', '折扣碼已被搶空囉！', 'error');
+          
+          appliedDiscount.value = found; discountInput.value = '';
+          await showAlert('套用成功', `成功套用優惠活動！`, 'success');
+        };
+
+        const saveSearchHistory = () => {
+          if (searchQuery.value && !searchHistory.value.includes(searchQuery.value)) {
+            searchHistory.value.unshift(searchQuery.value);
+            if (searchHistory.value.length > 10) searchHistory.value.pop();
+            localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value));
+          }
+        };
+
+        const sendPhoneCode = async () => {
+          if (!/^09\d{8}$/.test(profileForm.value.phone)) return await showAlert('格式錯誤', '請輸入正確的 09 開頭十碼手機號碼', 'error');
+          phoneCountdown.value = 60;
+          const timer = setInterval(() => { phoneCountdown.value--; if (phoneCountdown.value <= 0) clearInterval(timer); }, 1000);
+          setTimeout(async () => {
+            const mockCode = Math.floor(1000 + Math.random() * 9000).toString();
+            sentCode.value = mockCode;
+            await showAlert('【測試環境簡訊】', `您的驗證碼為：${mockCode}\n\n(此為系統模擬，實際需串接簡訊商API)`, 'info');
+          }, 1000);
+        };
+
+        const saveProfile = async () => {
+          if (!profileForm.value.city || !profileForm.value.district || !profileForm.value.addressDetail) { return await showAlert('資料不全', '請選擇縣市、區鄉鎮並填寫詳細地址！', 'error'); }
+          if (!isPhoneVerified.value) {
+            if (phoneInputCode.value !== sentCode.value || !sentCode.value) { return await showAlert('驗證失敗', '手機驗證碼輸入錯誤或尚未獲取！', 'error'); }
+            isPhoneVerified.value = true;
+          }
+          if (!agreeProfileTerms.value && !user.value?.name) {
+            return await showAlert('未同意條款', '請先詳細閱讀並勾選同意會員註冊需知！', 'error');
+          }
+          profileForm.value.address = profileForm.value.city + profileForm.value.district + profileForm.value.addressDetail;
+          const userData = { ...profileForm.value, lineId: liffProfile.value.userId, nickname: liffProfile.value.displayName, avatar: liffProfile.value.pictureUrl, email: liffProfile.value.email || '' };
+          
+          isSavingProfile.value = true;
+          try {
+            const res = await callAPI('registerUser', userData);
+            isSavingProfile.value = false;
+            await showAlert('儲存成功', res.message, 'success'); 
+            user.value = {...user.value, ...userData}; 
+            if(currentTab.value === 'profile') currentTab.value = 'home';
+          } catch(e) {
+             isSavingProfile.value = false;
+          }
+        };
+
+        const openCheckout = async () => {
+          if (!user.value?.name || !user.value?.phone || !user.value?.address) { 
+            await showAlert('提示', '請填寫完整的收件會員資料喔！', 'error'); 
+            currentTab.value = 'profile'; 
+            return; 
+          }
+          agreeToTerms.value = false; showCheckoutConfirm.value = true;
+        };
+
+        const checkout = async () => {
+          if (!agreeToTerms.value) return await showAlert('請確認', '請先詳閱並勾選同意購買需知條款。', 'error');
+          const orderData = { 
+            lineId: user.value.lineId, name: user.value.name, phone: user.value.phone, address: user.value.address, 
+            items: cart.value, totalAmount: cartTotal.value, notes: orderNotes.value,
+            discountCode: appliedDiscount.value ? appliedDiscount.value.code : '', discountAmount: appliedDiscount.value ? (appliedDiscount.value.type==='deduct'?appliedDiscount.value.value:cartSubtotal.value*(1-appliedDiscount.value.value)) : 0
+          };
+          try {
+            await callAPI('createOrder', orderData);
+            showCheckoutConfirm.value = false;
+            if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            await showAlert('訂單已成立', '感謝您的訂購！\n請至「我的訂單」查看賣家匯款帳號，並盡速匯款回報！', 'success');
+            cart.value = []; orderNotes.value = ''; appliedDiscount.value = null; currentTab.value = 'orders'; loadOrders();
+          } catch(e) {}
+        };
+
+        const userCancelOrder = async (orderId) => {
+          const confirmed = await showAlert('取消訂單', '確定要取消這筆訂單嗎？取消後將無法復原。', 'error', true);
+          if (confirmed) {
+            try {
+              await callAPI('cancelOrder', { orderId, lineId: user.value.lineId });
+              showAlert('已取消', '訂單已成功取消', 'success'); loadOrders();
+            } catch(e) {}
+          }
+        }
+
+        const showPaymentForm = (order) => { selectedOrder.value = order; showPaymentModal.value = true; };
+        const submitPayment = async () => {
+          if (!/^\d{5}$/.test(paymentForm.value.accountLast5)) return await showAlert('錯誤', '請輸入5碼數字', 'error');
+          const info = `帳號後五碼: ${paymentForm.value.accountLast5}, 日期: ${paymentForm.value.date}`;
+          try {
+            await callAPI('submitPayment', { orderId: selectedOrder.value.orderId, info });
+            showPaymentModal.value = false; await showAlert('回報成功', '已通知賣家，請等待版主確認', 'success'); loadOrders(); 
+          } catch(e) {}
+        };
+
+        const completeOrder = async (order) => { 
+          const confirmed = await showAlert('完成訂單', '確認您已收到商品無誤了嗎？', 'info', true);
+          if(confirmed) {
+            await callAPI('updateOrderStatus', { orderId: order.orderId, status: '已完成' }); loadOrders(); 
+          }
+        };
+        
+        const openReviewForm = (item) => { reviewTargetItem.value = item; reviewForm.value = { rating: 5, comment: '' }; showReviewForm.value = true; };
+        const submitReview = async () => {
+          if(!reviewForm.value.comment.trim()) return await showAlert('提示', '請輸入評價內容', 'info');
+          try {
+            await callAPI('submitReview', { productId: reviewTargetItem.value.id, rating: reviewForm.value.rating, comment: reviewForm.value.comment, lineId: user.value.lineId, name: user.value.name });
+            await showAlert('送出成功', '感謝您的評價', 'success'); showReviewForm.value = false; loadData(); 
+          } catch(e) {}
+        };
+
+        const submitContact = async () => {
+          if(!contactForm.value.message) return await showAlert('提示', '請輸入留言內容', 'error');
+          try {
+            await callAPI('submitContactMessage', { lineId: user.value?.lineId, name: user.value?.name, message: contactForm.value.message });
+            await showAlert('送出成功', '留言已送出給版主', 'success'); contactForm.value.message = ''; 
+          } catch(e) {}
+        };
+
+        const forceRunScraper = async () => {
+          const confirmed = await showAlert('手動維護', '即將在背景抓取最新好市多商品並同步舊商品狀態，確認執行？', 'info', true);
+          if (confirmed) {
+            await callAPI('forceRunScraper');
+            await showAlert('排程已啟動', '系統已開始在背景抓取，網頁將自動重新載入', 'success'); window.location.reload(); 
+          }
+        };
+        
+        const saveAdminSettings = async () => { 
+          await callAPI('saveSystemSettings', adminSettings.value); await showAlert('成功', '系統設置已儲存', 'success'); loadData(); 
+        };
+
         const uploadCatIcon = async (event, cat) => {
-          const file = event.target.files[0]; if (!file) return; cat.icon = '⏳ 上傳中...';
+          const file = event.target.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) return showAlert('錯誤', '圖片請勿超過 2MB', 'error');
+          cat.icon = '⏳ 上傳中...';
           const reader = new FileReader();
           reader.onload = async (e) => {
-            const res = await callAPI('uploadImageToDrive', { base64: e.target.result, filename: file.name });
-            cat.icon = res.success ? res.url : ''; if(!res.success) showAlert('失敗', res.message, 'error');
-          }; reader.readAsDataURL(file);
+            try {
+              const res = await callAPI('uploadImageToDrive', { base64: e.target.result, filename: file.name });
+              cat.icon = res.url;
+            } catch(err) { cat.icon = ''; }
+          };
+          reader.readAsDataURL(file);
         };
-        const saveAdminCategories = async () => { await callAPI('saveCategories', { cats: adminCategories.value, admin: user.value.name }); showAlert('成功', '分類已儲存', 'success'); loadData(); };
-        const adminUpdateOrderStatus = async (orderId, status) => { if (await showAlert('更新', `改為 ${status}？`, 'info', true)) { await callAPI('updateOrderStatus', { orderId, status }); adminLoadData(); } };
-        const openAdminProductEditor = (p) => { editProdForm.value = { id: p.id, name: p.name, originalPrice: p.originalPrice, finalPrice: p.finalPrice, categoriesStr: p.categories.join(','), isDelisted: p.isDelisted }; showAdminProductEditor.value = true; };
-        const adminSaveProduct = async () => { await callAPI('adminUpdateProduct', { product: { ...editProdForm.value, categories: editProdForm.value.categoriesStr.split(',').map(c=>c.trim()) }, admin: user.value.name }); showAdminProductEditor.value = false; showAlert('成功', '已更新', 'success'); loadData(); };
-        const promptShipOrder = (orderId) => { orderToShip.value = orderId; shippingTrackingCode.value = ''; showShippingModal.value = true; };
-        const confirmShipOrder = async () => { await callAPI('adminShipOrder', { orderId: orderToShip.value, tracking: shippingTrackingCode.value, admin: user.value.name }); showShippingModal.value = false; adminLoadData(); showAlert('成功', '已發貨', 'success'); };
-        const batchUpdateStatus = async (status) => { if(await showAlert('批次', `更新 ${selectedOrderIds.value.length} 筆為 ${status}?`, 'info', true)) { await callAPI('batchUpdateStatus', { orderIds: selectedOrderIds.value, status, admin: user.value.name }); selectedOrderIds.value = []; adminLoadData(); showAlert('成功', '批次更新完成', 'success'); } };
-        const submitCustomProduct = async () => { await callAPI('addCustomProduct', { product: customProdForm.value, admin: user.value.name }); showAlert('成功', '上架完成', 'success'); customProdForm.value = { name: '', originalPrice: '', finalPrice: '', image: '', description: '', specs: '' }; loadData(); };
-        const adminAddDiscountCode = async () => { await callAPI('addDiscountCode', { codeData: discountForm.value, admin: user.value.name }); showAlert('成功', '新增完成', 'success'); loadData(); };
-        const toggleBlock = async (member) => { const nStat = !member.isBlocked; if(await showAlert('警告', `將 ${member.name} ${nStat?'封鎖':'解除'}?`, 'error', true)) { await callAPI('toggleBlock', { lineId: member.lineId, isBlocked: nStat, admin: user.value.name }); adminLoadData(); } };
-        const saveDiscountCodes = async () => { await callAPI('saveDiscountCodes', { codes: discounts.value, admin: user.value.name }); showAlert('成功', '折扣碼已儲存', 'success'); loadData(); };
-        const deleteDiscount = (idx) => { discounts.value.splice(idx, 1); };
+
+        const saveAdminCategories = async () => {
+          loading.value = true;
+          await callAPI('saveCategories', { cats: adminCategories.value, admin: user.value.name }); 
+          loading.value = false; await showAlert('成功', '分類已更新', 'success'); loadData(); 
+        };
         
-        const copyPurchaseInfo = (order) => { let itemsStr = order.items.map(i => `- ${i.name} x${i.quantity}`).join('\n'); let text = `【採購單】\n訂單：${order.orderId}\n買家：${order.name}\n電話：${order.phone}\n地址：${order.address}\n\n明細：\n${itemsStr}\n備註：${order.notes||'無'}`; copyText(text); };
-        const exportCSV = () => { let csvContent = "data:text/csv;charset=utf-8,\uFEFF訂單編號,買家,電話,狀態,總額\n"; allOrders.value.forEach(o => { csvContent += `${o.orderId},${o.name},${o.phone},${o.status},${o.totalAmount}\n`; }); const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "代購訂單匯出.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
-        const copyText = (text) => { navigator.clipboard.writeText(text).then(() => { sysAlert.value = { show: true, title: '成功', message: `已複製！`, type: 'success', showCancel: false }; setTimeout(() => sysAlert.value.show = false, 1500); });};
-        const renderChart = () => { nextTick(() => { const ctx = document.getElementById('revenueChart'); if (ctx) { if (window.myChart) window.myChart.destroy(); window.myChart = new Chart(ctx, { type: 'bar', data: { labels: ['前5天', '前4天', '前3天', '前2天', '昨天', '今日'], datasets: [{ label: '營業額', data: [1200, 1900, 3000, 500, 2000, 3500], backgroundColor: '#3b82f6' }] }}); } }); };
+        const adminLoadData = async () => {
+          const res = await callAPI('adminLoadData');
+          allOrders.value = res.orders; adminStats.value = res.stats; adminMembers.value = res.members; systemLogs.value = res.logs; renderChart(); 
+        };
+        const adminViewOrders = () => { adminLoadData(); };
+
+        const adminUpdateOrderStatus = async (orderId, status) => { 
+          const confirmed = await showAlert('更新狀態', `確定將訂單狀態改為「${status}」？`, 'info', true);
+          if (confirmed) { await callAPI('updateOrderStatus', { orderId, status }); adminLoadData(); }
+        };
+
+        const openAdminProductEditor = (p) => {
+          editProdForm.value = { id: p.id, name: p.name, originalPrice: p.originalPrice, finalPrice: p.finalPrice, categoriesStr: p.categories.join(', '), isDelisted: p.isDelisted };
+          showAdminProductEditor.value = true;
+        };
+
+        const adminSaveProduct = async () => {
+          if (!editProdForm.value.name) return showAlert('錯誤', '商品名稱不可空白', 'error');
+          loading.value = true;
+          const dataToSave = { ...editProdForm.value, categories: editProdForm.value.categoriesStr.split(',').map(c=>c.trim()) };
+          await callAPI('adminUpdateProduct', { product: dataToSave, admin: user.value.name });
+          showAdminProductEditor.value = false; loading.value = false; await showAlert('成功', '商品已更新', 'success'); loadData();
+        };
+
+        const copyPurchaseInfo = (order) => {
+          let itemsStr = order.items.map(i => `- ${i.name} x${i.quantity}`).join('\n');
+          let text = `【好事多會發生 - 採購單】\n訂單：${order.orderId}\n買家：${order.name}\n電話：${order.phone}\n地址：${order.address}\n\n明細：\n${itemsStr}`;
+          if(order.notes) text += `\n\n備註：${order.notes}`;
+          copyText(text);
+        };
+
+        const promptShipOrder = (orderId) => { orderToShip.value = orderId; shippingTrackingCode.value = ''; showShippingModal.value = true; };
+        const confirmShipOrder = async () => {
+          loading.value = true;
+          await callAPI('adminShipOrder', { orderId: orderToShip.value, tracking: shippingTrackingCode.value, admin: user.value.name }); 
+          showShippingModal.value = false; adminLoadData(); loading.value = false; await showAlert('發貨成功', '已通知買家物流單號', 'success'); 
+        };
+        
+        const batchUpdateStatus = async (status) => {
+          const confirmed = await showAlert('批次操作', `確定將選取的 ${selectedOrderIds.value.length} 筆訂單更改為「${status}」？`, 'info', true);
+          if(confirmed) {
+            await callAPI('batchUpdateStatus', { orderIds: selectedOrderIds.value, status, admin: user.value.name });
+            selectedOrderIds.value = []; adminLoadData(); showAlert('更新完成', `成功更新批次訂單`, 'success');
+          }
+        };
+
+        const submitCustomProduct = async () => {
+          if (!customProdForm.value.name || !customProdForm.value.finalPrice || !customProdForm.value.image) return await showAlert('提示', '請填寫必填欄位', 'error');
+          loading.value = true;
+          await callAPI('addCustomProduct', { product: customProdForm.value, admin: user.value.name });
+          loading.value = false; await showAlert('成功', '上架完成', 'success');
+          customProdForm.value = { name: '', originalPrice: '', finalPrice: '', image: '', description: '', specs: '' };
+          loadData();
+        };
+
+        const adminAddDiscountCode = async () => {
+          if (!discountForm.value.code || !discountForm.value.amount) return await showAlert('提示', '請填寫折扣碼與金額', 'error');
+          loading.value = true;
+          await callAPI('addDiscountCode', { codeData: discountForm.value, admin: user.value.name });
+          loading.value = false; await showAlert('成功', '新增折扣碼完成', 'success');
+          discountForm.value = { code: '', name: '', startDate: '', endDate: '', type: 'deduct', value: '', minSpend: '', applyTo: 'ALL', totalQty: '', remQty: '', desc: '', limitPerUser: 1 };
+          loadData();
+        };
+
+        const saveDiscountCodes = async () => {
+          loading.value = true;
+          await callAPI('saveDiscountCodes', { codes: discounts.value, admin: user.value.name });
+          loading.value = false; await showAlert('成功', '折扣碼列表已更新', 'success'); loadData();
+        };
+        const deleteDiscount = (idx) => { discounts.value.splice(idx, 1); };
+
+        const exportCSV = () => {
+          let csvContent = "data:text/csv;charset=utf-8,\uFEFF訂單編號,買家,電話,狀態,總額\n";
+          allOrders.value.forEach(o => { csvContent += `${o.orderId},${o.name},${o.phone},${o.status},${o.totalAmount}\n`; });
+          const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "代購訂單匯出.csv");
+          document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        };
+
+        const toggleBlock = async (member) => {
+          const newStatus = !member.isBlocked;
+          const confirmed = await showAlert('警告', `確定要將 ${member.name} ${newStatus ? '封鎖停權' : '解除封鎖'} 嗎？`, 'error', true);
+          if (confirmed) {
+            await callAPI('toggleBlock', { lineId: member.lineId, isBlocked: newStatus, admin: user.value.name }); adminLoadData(); 
+          }
+        };
+
+        const renderChart = () => {
+          nextTick(() => {
+            const ctx = document.getElementById('revenueChart');
+            if (ctx) {
+              if (window.myChart) window.myChart.destroy();
+              window.myChart = new Chart(ctx, { type: 'bar', data: { labels: ['前5天', '前4天', '前3天', '前2天', '昨天', '今日'], datasets: [{ label: '營業額概況', data: [1200, 1900, 3000, 500, 2000, 3500], backgroundColor: '#3b82f6' }] }});
+            }
+          });
+        };
+
         watch(adminTab, (newVal) => { if (newVal === 'dashboard') renderChart(); });
 
         const toggleSortOrder = () => { const orders = ['default', 'priceAsc', 'priceDesc']; sortOrder.value = orders[(orders.indexOf(sortOrder.value) + 1) % orders.length]; };
         const getStatusColor = (status) => { const colors = { '待匯款': 'text-red-500', '已匯款待確認': 'text-blue-500', '處理中': 'text-yellow-600', '已出貨': 'text-green-500', '已完成': 'text-gray-400', '已取消': 'text-gray-300' }; return colors[status] || 'text-gray-800'; };
-        
+        const copyText = (text) => { navigator.clipboard.writeText(text).then(() => {
+          sysAlert.value = { show: true, title: '複製成功', message: `已複製至剪貼簿！`, type: 'success', showCancel: false };
+          setTimeout(() => { if(sysAlert.value.show) sysAlert.value.show = false; }, 1500);
+        });};
+
         return {
-          currentTab, loading, loadingProgress, loadingText, user, liffProfile, adminSettings, categories, selectedCategory, viewMode, sortOrder, twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
-          products, homeFilteredProducts, cart, cartSubtotal, cartTotal, orders, orderFilter, filteredUserOrders, addonProducts, freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
-          isGuest, showGuestPopup, handleNav, forceInitSpreadsheet, uploadCatIcon, searchQuery, searchHistory, filteredProducts, saveSearchHistory, tryFetchFromCostco, isFetching,
-          discountInput, appliedDiscount, applyDiscount, showProductDetail, selectedProduct, detailTab, openProductDetail, tryOpenHistoryProduct, openLightbox, lightboxImage,
+          currentTab, loading, loadingProgress, loadingText, user, liffProfile, adminSettings, categories, selectedCategory, viewMode, sortOrder,
+          twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
+          products, homeFilteredProducts, cart, cartSubtotal, cartTotal, orders, orderFilter, filteredUserOrders, addonProducts,
+          freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
+          isGuest, showGuestPopup, handleNav, forceInitSpreadsheet, uploadCatIcon,
+          searchQuery, searchHistory, filteredProducts, saveSearchHistory, tryFetchFromCostco, isFetching,
+          discountInput, appliedDiscount, availableDiscountCodes, applyDiscount,
+          showProductDetail, selectedProduct, detailTab, openProductDetail, tryOpenHistoryProduct, openLightbox, lightboxImage,
           addToCart, updateQuantity, removeFromCart, clearCart, checkout, openCheckout, showCheckoutConfirm, orderNotes, agreeToTerms, agreeProfileTerms, userCancelOrder,
           profileForm, saveProfile, contactForm, submitContact, showReviewForm, reviewForm, reviewTargetItem, openReviewForm, submitReview,
           showPaymentModal, selectedOrder, paymentForm, showPaymentForm, submitPayment, completeOrder,
-          adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, toggleBlock, forceRunScraper, saveAdminSettings, adminViewOrders, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo, showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder,
+          adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, toggleBlock,
+          forceRunScraper, saveAdminSettings, adminViewOrders, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo, showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder,
           adminCategories, saveAdminCategories, showAdminProductEditor, editProdForm, adminProductSearch, adminFilteredProducts, openAdminProductEditor, adminSaveProduct,
           customProdForm, submitCustomProduct, discountForm, discounts, discountCodesList, adminAddDiscountCode, saveDiscountCodes, deleteDiscount,
-          formatCountdown, toggleSortOrder, getStatusColor, copyText, pageTitle: '好事多會發生', toggleFavorite, isFavorite, reviewThreshold, requestApproval
+          formatCountdown, toggleSortOrder, getStatusColor, copyText, pageTitle: '好事多會發生',
+          toggleFavorite, isFavorite, reviewThreshold, requestApproval
         };
       }
     });
