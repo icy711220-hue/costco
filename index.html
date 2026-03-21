@@ -1916,9 +1916,6 @@
             loadingProgress.value = 95; loadingText.value = '預載圖片...';
             await preloadImages(allProducts.value.slice(0, 20).map(p => p.image).filter(u => u));
             loadingProgress.value = 100; loadingText.value = '載入完成！';
-            // ✅ 3. 套用後台設定的預設首頁分類
-            const defCat = adminSettings.value['首頁預設分類'];
-            if (defCat) selectedCategory.value = defCat;
             setTimeout(() => { loading.value = false; checkProfileCompletion(); }, 500);
             // 背景繼續載入
             loadRemainingProducts();
