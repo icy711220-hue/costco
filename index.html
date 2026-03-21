@@ -274,11 +274,12 @@
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: Math.min((cartSubtotal / freeShippingThreshold) * 100, 100) + '%' }"></div></div>
           </div>
-          <div class="bg-white rounded-lg shadow p-3 mb-4 flex gap-2">
+          <!-- ✅ 2. 折扣碼欄位：位置 top (上方) -->
+          <div v-if="adminSettings['顯示折扣碼欄位'] !== '否' && adminSettings['折扣碼位置'] === 'top'" class="bg-white rounded-lg shadow p-3 mb-4 flex gap-2">
             <input v-model="discountInput" type="text" placeholder="請輸入折扣碼" class="flex-1 border rounded p-2 text-sm uppercase focus:ring focus:ring-blue-200">
             <button @click="applyDiscount" class="bg-gray-800 text-white px-3 rounded font-bold text-sm">套用</button>
           </div>
-          <div v-if="appliedDiscount" class="bg-green-50 border border-green-200 text-green-700 p-2 rounded mb-4 text-xs flex justify-between items-center">
+          <div v-if="appliedDiscount && adminSettings['折扣碼位置'] === 'top'" class="bg-green-50 border border-green-200 text-green-700 p-2 rounded mb-4 text-xs flex justify-between items-center">
             <span><i class="fa-solid fa-ticket mr-1"></i>已套用「{{ appliedDiscount.code }}」折扣</span>
             <button @click="appliedDiscount = null" class="text-red-500"><i class="fa-solid fa-xmark"></i></button>
           </div>
@@ -288,10 +289,13 @@
           </div>
           <div class="bg-white rounded-lg shadow p-3 mb-4" v-for="(item, index) in cart" :key="index">
             <div class="flex gap-3">
-              <img :src="item.image||'https://placehold.co/150x150?text=No+Image'" class="w-16 h-16 object-cover rounded border flex-shrink-0">
+              <!-- ✅ 1. 點圖片或名稱開啟商品介紹 -->
+              <img :src="item.image||'https://placehold.co/150x150?text=No+Image'" class="w-16 h-16 object-cover rounded border flex-shrink-0 cursor-pointer active:opacity-70"
+                @click="tryOpenHistoryProduct(item.id)">
               <div class="flex-1 flex flex-col justify-between min-w-0">
                 <div>
-                  <h4 class="text-sm font-bold leading-tight text-gray-800 break-words">{{ item.name }}</h4>
+                  <h4 class="text-sm font-bold leading-tight text-gray-800 break-words cursor-pointer hover:text-blue-600"
+                    @click="tryOpenHistoryProduct(item.id)">{{ item.name }}</h4>
                   <div class="flex gap-1 mt-1 flex-wrap">
                     <span v-if="item.minQty > 1" class="text-[10px] bg-red-50 text-red-600 px-1 rounded border border-red-100">最少 {{item.minQty}} 件</span>
                     <span v-if="item.maxQty < 99" class="text-[10px] bg-orange-50 text-orange-600 px-1 rounded border border-orange-100">限購 {{item.maxQty}} 件</span>
@@ -313,6 +317,15 @@
               </div>
               <button @click="removeFromCart(index)" class="text-gray-400 hover:text-red-500 px-1 flex-shrink-0"><i class="fa-solid fa-trash"></i></button>
             </div>
+          </div>
+          <!-- ✅ 2. 折扣碼欄位：位置 bottom（預設，下方） -->
+          <div v-if="adminSettings['顯示折扣碼欄位'] !== '否' && adminSettings['折扣碼位置'] !== 'top'" class="bg-white rounded-lg shadow p-3 mb-4 flex gap-2">
+            <input v-model="discountInput" type="text" placeholder="請輸入折扣碼" class="flex-1 border rounded p-2 text-sm uppercase focus:ring focus:ring-blue-200">
+            <button @click="applyDiscount" class="bg-gray-800 text-white px-3 rounded font-bold text-sm">套用</button>
+          </div>
+          <div v-if="appliedDiscount && adminSettings['折扣碼位置'] !== 'top'" class="bg-green-50 border border-green-200 text-green-700 p-2 rounded mb-4 text-xs flex justify-between items-center">
+            <span><i class="fa-solid fa-ticket mr-1"></i>已套用「{{ appliedDiscount.code }}」折扣</span>
+            <button @click="appliedDiscount = null" class="text-red-500"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div class="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100 shadow-sm" v-if="addonProductsDisplay.length > 0 || browseHistoryProducts.length > 0">
             <!-- 瀏覽歷史 -->
@@ -496,7 +509,7 @@
                 <h4 class="text-xs font-bold text-gray-700"><i class="fa-solid fa-circle-info mr-1 text-blue-500"></i>會員註冊需知</h4>
                 <div class="flex gap-1">
                   <button type="button" @click="termsSize = Math.max(10, termsSize - 2)" class="text-[10px] bg-gray-200 px-2 py-0.5 rounded font-bold hover:bg-gray-300">A-</button>
-                  <button type="button" @click="termsSize = Math.min(20, termsSize + 2)" class="text-[10px] bg-gray-200 px-2 py-0.5 rounded font-bold hover:bg-gray-300">A+</button>
+                  <button type="button" @click="termsSize = Math.min(22, termsSize + 2)" class="text-[10px] bg-gray-200 px-2 py-0.5 rounded font-bold hover:bg-gray-300">A+</button>
                 </div>
               </div>
               <div class="h-24 overflow-y-auto whitespace-pre-line bg-white p-2 border rounded leading-relaxed" :style="'font-size:'+termsSize+'px; color:#6b7280;'">{{ adminSettings['會員註冊需知'] }}</div>
@@ -643,6 +656,10 @@
 
           <div class="bg-white p-4 rounded-lg shadow"><h3 class="font-bold text-sm mb-2 text-gray-700">近七日營業額趨勢</h3><div class="relative h-48 w-full"><canvas id="revenueChart"></canvas></div></div>
           <button @click="forceRunScraper" class="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg text-sm font-bold w-full shadow-md"><i class="fa-solid fa-robot mr-2"></i>手動執行【全自動維護與商品同步】</button>
+          <!-- ✅ 5. 手動去重複 -->
+          <button @click="runDeduplication" class="mt-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold w-full shadow-md">
+            <i class="fa-solid fa-clone mr-2"></i>手動去除重複商品
+          </button>
         </div>
 
         <!-- 月報統計 -->
@@ -719,9 +736,28 @@
           <div class="mb-3 relative"><input v-model="adminProductSearch" type="text" placeholder="搜尋名稱或編號..." class="w-full border rounded p-2 text-sm pr-8"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i></div>
           <div class="max-h-64 overflow-y-auto space-y-2 pr-1 hide-scrollbar">
             <div v-for="p in adminFilteredProducts" :key="p.id" class="border p-2 rounded flex items-center gap-3 bg-gray-50">
-              <img :src="p.image" class="w-10 h-10 object-cover rounded border">
+              <!-- ✅ 4. 批量選擇 checkbox -->
+              <input type="checkbox" :value="p.id" v-model="batchSelectedIds" class="w-4 h-4 text-purple-600 rounded flex-shrink-0">
+              <img :src="p.image" class="w-10 h-10 object-cover rounded border flex-shrink-0">
               <div class="flex-1 overflow-hidden"><p class="text-xs font-bold text-gray-800 truncate">{{ p.name }}</p><p class="text-[10px] text-red-600 mt-0.5">${{ p.finalPrice }} <span class="text-gray-400">{{ p.categories?.join(', ') || '' }}</span></p></div>
-              <button @click="openAdminProductEditor(p)" class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">編輯</button>
+              <button @click="openAdminProductEditor(p)" class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold flex-shrink-0">編輯</button>
+            </div>
+          </div>
+          <!-- ✅ 4. 批量設定分類 -->
+          <div v-if="batchSelectedIds.length > 0" class="mt-3 bg-purple-50 border border-purple-200 rounded p-3">
+            <p class="text-xs font-bold text-purple-700 mb-2">已選 {{ batchSelectedIds.length }} 件商品 — 批量設定分類</p>
+            <div class="flex gap-2">
+              <select v-model="batchCategoryTarget" class="flex-1 border rounded p-2 text-sm bg-white">
+                <option value="">選擇要加入的分類...</option>
+                <option v-for="cat in categories.filter(c=>c.name!=='全部')" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
+                <option value="熱門">熱門</option>
+                <option value="用戶添加">用戶添加</option>
+              </select>
+              <button @click="applyBatchCategory" :disabled="!batchCategoryTarget || isBtnLoading.batchCat"
+                class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold disabled:opacity-50 hover:bg-purple-700">
+                <i v-if="isBtnLoading.batchCat" class="fa-solid fa-spinner fa-spin mr-1"></i>套用
+              </button>
+              <button @click="batchSelectedIds=[]" class="bg-gray-200 text-gray-600 px-2 py-2 rounded text-xs font-bold">清除</button>
             </div>
           </div>
         </div>
@@ -944,6 +980,23 @@
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">銀行匯款帳號</label><textarea v-model="adminSettings['銀行帳號']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-16 resize-none font-mono"></textarea></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">會員註冊需知</label><textarea v-model="adminSettings['會員註冊需知']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-32 resize-none"></textarea></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">結帳購買需知條款</label><textarea v-model="adminSettings['購買需知']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-20 resize-none"></textarea></div>
+            <!-- ✅ 2. 折扣碼欄位設置 -->
+            <div class="border border-yellow-200 bg-yellow-50 rounded p-3 mt-1">
+              <label class="block text-xs text-yellow-700 mb-2 font-bold"><i class="fa-solid fa-ticket mr-1"></i>購物車折扣碼欄位設定</label>
+              <div class="flex gap-3 mb-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" v-model="adminSettings['顯示折扣碼欄位']" true-value="是" false-value="否" class="w-4 h-4 text-yellow-600 rounded">
+                  <span class="text-xs font-bold text-yellow-700">在購物車顯示折扣碼輸入欄</span>
+                </label>
+              </div>
+              <div v-if="adminSettings['顯示折扣碼欄位'] !== '否'">
+                <label class="block text-xs text-gray-500 mb-1 font-bold">折扣碼欄位位置</label>
+                <select v-model="adminSettings['折扣碼位置']" class="w-full border rounded p-2 text-sm bg-white focus:ring-1 outline-none">
+                  <option value="top">商品列表上方</option>
+                  <option value="bottom">商品列表下方（預設）</option>
+                </select>
+              </div>
+            </div>
             <div class="border-t border-gray-100 pt-3 mt-3">
               <label class="block text-xs text-gray-500 mb-1 font-bold">跑馬燈宣傳文字（每行一組，多組輪流顯示）</label>
               <textarea v-model="adminSettings['跑馬燈文字']" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none h-20 resize-none" placeholder="第一組宣傳文字&#10;第二組宣傳文字&#10;第三組宣傳文字"></textarea>
@@ -1413,11 +1466,14 @@
         // ✅ 4. 結帳明細字體大小
         const cartModalFontSize = ref(13);
 
-        // ✅ 2. 熱門商品：只依據已售出數量判斷（≥100件）
+        // ✅ 4. 熱門商品：soldCount>=門檻 OR 商品分類包含「熱門」
         const popularThreshold = computed(() => parseInt(adminSettings.value['熱門門檻']) || 100);
         const isPopular = (p) => {
           if (!p || p.isDelisted) return false;
-          return (p.soldCount || 0) >= popularThreshold.value;
+          if ((p.soldCount || 0) >= popularThreshold.value) return true;
+          // ✅ 4. 商品分類名稱包含「熱門」也列入
+          if (p.categories && p.categories.some(c => c.includes('熱門'))) return true;
+          return false;
         };
 
         // ✅ 5. 會員需知字體大小
@@ -1453,14 +1509,14 @@
           const buyerName = order.name || '您';
           const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
           const orderId = order.orderId || '';
-          // 組合商品清單
+          const tracking = shippingTrackingCode.value || '';
+          // 商品清單（編號 + 名稱 + 數量 + 小計）
           let itemsText = '';
           if (order.items && order.items.length > 0) {
-            itemsText = '\n\n📦 訂單商品：\n' + order.items.map(i => `  • ${i.name}  x${i.quantity}  $${i.finalPrice * i.quantity}`).join('\n');
+            itemsText = order.items.map((i, idx) => `${idx + 1}、${i.name}  x${i.quantity}  $${i.finalPrice * i.quantity}`).join('\n');
           }
-          const totalText = order.totalAmount ? `\n\n💰 訂單金額：$${order.totalAmount}` : '';
-          const trackingText = shippingTrackingCode.value ? `\n\n🚚 物流單號：${shippingTrackingCode.value}` : '';
-          return `【${shopName}】\n您好 ${buyerName}，\n您的訂單已經幫您寄出囉！🎉${orderId ? '\n\n訂單編號：' + orderId : ''}${itemsText}${totalText}${trackingText}\n\n感謝您的購買，收到商品後別忘了回來給我們評價喔！`;
+          const trackingLink = tracking ? `\n嘉里大榮查詢連結：https://www.kerrytj.com/webquery/CargoStatus/CS_Search_KtjNo.aspx?ktjNO=${tracking}` : '';
+          return `【${shopName}代購平台】\n親愛的買家 ${buyerName} 您好，感謝您在代購平台購買的以下商品\n${itemsText}\n\n您的訂單 ${orderId} 已經幫您寄出囉！🎉\n物流單號：${tracking || '（待填入）'}${trackingLink}\n\n感謝您的購買，收到商品後別忘了來給我們評價喔！`;
         });
         const copyShipMessage = () => { copyText(shipMessage.value); };
 
@@ -2347,9 +2403,27 @@
         };
 
         const exportCSV = () => {
-          let csvContent = "data:text/csv;charset=utf-8,\uFEFF訂單編號,買家,電話,狀態,總額\n";
-          allOrders.value.forEach(o => { csvContent += `${o.orderId},${o.name},${o.phone},${o.status},${o.totalAmount}\n`; });
-          const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "代購訂單匯出.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+          try {
+            // ✅ 6. 改用 Blob 方式避免某些瀏覽器無反應
+            let csvRows = ['\uFEFF訂單編號,買家姓名,手機,收件地址,狀態,商品小計,總金額,下單時間'];
+            allOrders.value.forEach(o => {
+              const addr = (o.address || '').replace(/,/g, '，');
+              const name = (o.name || '').replace(/,/g, '，');
+              csvRows.push(`${o.orderId},${name},${o.phone},${addr},${o.status},${o.totalAmount},${o.totalAmount},${o.date || ''}`);
+            });
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `代購訂單_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          } catch(e) {
+            showAlert('匯出失敗', '請嘗試在桌機瀏覽器操作匯出功能', 'error');
+          }
         };
 
         const toggleBlock = async (member) => {
@@ -2478,6 +2552,43 @@
           showAlert('已複製', '請手動貼給好友！', 'info');
         };
 
+        // ✅ 5. 手動去重複商品
+        const runDeduplication = async () => {
+          const confirmed = await showAlert('去除重複商品', '將掃描試算表中重複的商品編號，保留最後一筆（最新），刪除其餘重複的。確定執行？', 'info', true);
+          if (!confirmed) return;
+          try {
+            const res = await callAPI('deduplicateProducts', { admin: user.value.name });
+            await showAlert('完成', res.message || `已處理重複商品`, 'success');
+            loadRemainingProducts();
+          } catch(e) {}
+        };
+
+        // ✅ 4. 批量設定商品分類
+        const batchSelectedIds = ref([]);
+        const batchCategoryTarget = ref('');
+        const applyBatchCategory = () => withBtnLock('batchCat', async () => {
+          if (!batchCategoryTarget.value || batchSelectedIds.value.length === 0) return;
+          const cat = batchCategoryTarget.value;
+          // 更新 allProducts 本地狀態
+          let updatedCount = 0;
+          for (const pid of batchSelectedIds.value) {
+            const prod = allProducts.value.find(p => p.id === pid);
+            if (prod) {
+              if (!prod.categories.includes(cat)) {
+                prod.categories.push(cat);
+              }
+              updatedCount++;
+            }
+          }
+          // 呼叫 API 批量儲存
+          try {
+            await callAPI('batchSetCategory', { ids: batchSelectedIds.value, category: cat, admin: user.value.name });
+            await showAlert('設定完成', `已將 ${updatedCount} 件商品加入「${cat}」分類`, 'success');
+            batchSelectedIds.value = [];
+            batchCategoryTarget.value = '';
+          } catch(e) {}
+        });
+
         return {
           currentTab, loading, loadingProgress, loadingText, user, liffProfile, adminSettings, categories, selectedCategory, viewMode, sortOrder,
           twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
@@ -2506,7 +2617,9 @@
           showTrackingModal, currentTrackingCode, openTrackingModal,
           showReturnModal, returnOrder, returnFeeAmount, returnRefundAmount, openReturnModal, confirmReturn,
           showFontSlider, fontScaleRaw, applyFontScale, cartModalFontSize, checkoutTermsSize,
-          showMemberCard
+          showMemberCard,
+          // ✅ 4. 批量設定分類
+          batchSelectedIds, batchCategoryTarget, applyBatchCategory, runDeduplication
         };
       }
     });
