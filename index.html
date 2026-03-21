@@ -236,8 +236,10 @@
             <div class="p-1.5 flex-1 flex flex-col">
               <h3 class="prod-name font-bold flex-1 cursor-pointer leading-tight text-gray-800 line-clamp-2" @click="openProductDetail(product)">{{ product.name }}</h3>
               <div class="flex justify-between items-end mt-1 flex-1"><p class="prod-price text-red-600 font-bold">${{ product.finalPrice }}</p></div>
-              <button v-if="product.finalPrice >= reviewThreshold" @click="requestApproval(product)" class="mt-1.5 w-full bg-yellow-500 text-white text-[11px] py-1 rounded font-bold shadow-sm">申請報價</button>
-              <button v-else @click="addToCart(product)" class="mt-1.5 w-full bg-blue-600 text-white text-[11px] py-1 rounded font-bold shadow-sm">加購物車</button>
+              <!-- ✅ 1. 缺貨商品不顯示加入購物車 -->
+              <div v-if="product.stock === 0" class="mt-1.5 w-full bg-gray-200 text-gray-500 text-[11px] py-1 rounded font-bold text-center cursor-not-allowed">缺貨中</div>
+              <button v-else-if="product.finalPrice >= reviewThreshold" @click="requestApproval(product)" class="mt-1.5 w-full bg-yellow-500 text-white text-[11px] py-1 rounded font-bold shadow-sm">申請報價</button>
+              <button v-else @click="addToCart(product)" class="mt-1.5 w-full bg-blue-600 text-white text-[11px] py-1 rounded font-bold shadow-sm">加入購物車</button>
             </div>
           </div>
         </div>
@@ -977,9 +979,17 @@
         <button @click="showProductDetail = false" class="absolute top-3 right-3 bg-black bg-opacity-40 text-white w-8 h-8 rounded-full z-10 hover:bg-opacity-60"><i class="fa-solid fa-xmark"></i></button>
         <div class="relative h-56 bg-white flex-shrink-0 cursor-pointer border-b" @click="openLightbox(selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image)">
           <img :src="selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image" class="w-full h-full object-contain p-4">
+          <!-- ✅ 2. 版權聲明 -->
+          <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-20 text-center py-0.5">
+            <p class="text-[9px] text-white opacity-80">※ 商品內容均擷自好市多官方網站資訊 ※</p>
+          </div>
         </div>
         <div class="p-4 flex-shrink-0 bg-white">
-          <h3 class="font-bold text-lg leading-tight text-gray-800">{{ selectedProduct?.name }}</h3>
+          <!-- ✅ 2. 商品名稱 + 商品編號 -->
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-lg leading-tight text-gray-800 flex-1">{{ selectedProduct?.name }}</h3>
+            <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 mt-1">#{{ selectedProduct?.id }}</span>
+          </div>
           <div class="flex gap-1 mt-1 flex-wrap"><span v-for="cat in selectedProduct?.categories" class="text-[10px] bg-gray-100 text-gray-600 px-1.5 rounded">{{ cat }}</span></div>
           <div class="flex items-center mt-1" v-if="selectedProduct?.reviewsCount > 0"><i class="fa-solid fa-star text-yellow-400 text-xs"></i><span class="text-xs text-gray-500 ml-1 font-bold">{{ selectedProduct?.rating }} <span class="font-normal">({{ selectedProduct?.reviewsCount }}則評價)</span></span></div>
           <div class="mt-2 flex items-baseline gap-2"><p class="text-red-600 font-bold text-2xl">${{ selectedProduct?.finalPrice }}</p><p v-if="selectedProduct?.discount > 0" class="text-sm text-gray-400 line-through">原價 ${{ selectedProduct?.originalPrice }}</p></div>
@@ -1020,6 +1030,8 @@
         </div>
         <div class="p-3 border-t flex gap-2 flex-shrink-0 bg-white">
           <button v-if="selectedProduct?.isDelisted" class="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-base cursor-not-allowed">商品已下架</button>
+          <!-- ✅ 1. 缺貨商品不可加入購物車 -->
+          <button v-else-if="selectedProduct?.stock === 0" class="flex-1 bg-gray-300 text-gray-500 py-3 rounded-lg font-bold text-base cursor-not-allowed"><i class="fa-solid fa-ban mr-1"></i>此商品目前缺貨中</button>
           <button v-else-if="selectedProduct?.finalPrice >= reviewThreshold" @click="requestApproval(selectedProduct);showProductDetail=false" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-bold shadow-md text-base"><i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>申請代購報價</button>
           <button v-else @click="addToCart(selectedProduct);showProductDetail=false" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md text-base">加入購物車</button>
         </div>
@@ -1819,6 +1831,8 @@
         const addToCart = async (p) => {
           if(isGuest.value) { showGuestPopup.value = true; return; }
           if(p.isDelisted) return await showAlert('提示','該商品已下架無法購買','error');
+          // ✅ 1. 缺貨商品不可加入購物車
+          if(p.stock === 0) return await showAlert('缺貨中','此商品目前缺貨，無法加入購物車','info');
           const existing = cart.value.find(item => item.id === p.id);
           if (existing) {
             if (existing.quantity + 1 > p.maxQty) return await showAlert('限購提示',`此商品最多只能購買 ${p.maxQty} 件喔！`,'info');
