@@ -218,9 +218,9 @@
             <i class="fa-solid fa-cloud-arrow-down text-3xl text-blue-300 mb-2"></i>
             <p class="text-sm text-blue-800 font-bold mb-1">想要把這個商品加進商城嗎？</p>
             <p class="text-xs text-blue-600 mb-4 leading-relaxed">請輸入純數字好市多商品編號，系統將幫您抓取並套用代購匯率！</p>
-            <button @click="tryFetchFromCostco" :disabled="isFetching" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow w-full disabled:bg-gray-400">
+            <button @click="tryFetchFromCostco" :disabled="isFetching" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow w-full disabled:bg-blue-400">
               <i class="fa-solid mr-2" :class="isFetching?'fa-spinner fa-spin':'fa-wand-magic-sparkles'"></i>
-              {{ isFetching ? '正在連線尋找中...' : '嘗試從好市多雲端新增' }}
+              {{ isFetching ? '⏳ 正在從好市多抓取商品，請稍候...' : '嘗試從好市多雲端新增' }}
             </button>
           </div>
         </div>
@@ -512,10 +512,10 @@
               <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-clipboard-list text-white"></i></div>
               <span class="text-xs font-bold text-blue-700">我的訂單查詢</span>
             </button>
-            <!-- 複製我的ID -->
-            <button @click="copyText(liffProfile?.userId || '')" class="flex flex-col items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-lg hover:bg-gray-100 active:scale-95 transition-all">
-              <div class="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-id-badge text-white"></i></div>
-              <span class="text-xs font-bold text-gray-600">複製我的LINE ID</span>
+            <!-- ✅ 4. 改為限量商品快捷 -->
+            <button @click="currentTab='home'; selectedCategory='🔥 限量'; sortOrder='priceAsc'" class="flex flex-col items-center gap-2 p-3 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+              <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center"><i class="fa-solid fa-fire-flame-curved text-white"></i></div>
+              <span class="text-xs font-bold text-orange-700">限量搶購</span>
             </button>
             <!-- 好市多官網 -->
             <a href="https://www.costco.com.tw/" target="_blank" class="flex flex-col items-center gap-2 p-3 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
@@ -1139,12 +1139,12 @@
         </div>
         <p class="text-xs text-gray-500 mb-3">物流單號：<span class="font-bold text-gray-800 font-mono">{{ currentTrackingCode }}</span></p>
         <div class="space-y-2 mb-4">
-          <!-- 黑貓宅急便 -->
+          <!-- 嘉里大榮（預設）-->
           <a :href="'https://www.kerrytj.com/webquery/CargoStatus/CS_Search_KtjNo.aspx?ktjNO=' + currentTrackingCode"
             target="_blank"
             class="flex items-center gap-3 bg-yellow-50 border border-yellow-100 p-3 rounded-lg hover:bg-yellow-100">
             <i class="fa-solid fa-box text-yellow-600 text-xl"></i>
-            <div><p class="font-bold text-sm text-yellow-800">黑貓宅急便</p><p class="text-xs text-yellow-500">KerryTJ 查詢</p></div>
+            <div><p class="font-bold text-sm text-yellow-800">嘉里大榮物流（預設）</p><p class="text-xs text-yellow-500">KerryTJ 貨態查詢</p></div>
             <i class="fa-solid fa-external-link-alt ml-auto text-yellow-400"></i>
           </a>
           <!-- 台灣便民 / 7-11 -->
@@ -1240,9 +1240,9 @@
         const user = ref(null);
         const adminSettings = ref({});
         const categories = ref([{name:'全部'}]);
-        const selectedCategory = ref('全部');
+        const selectedCategory = ref('🔥 限量'); // ✅ 1. 預設進入限量頁面
         const viewMode = ref('grid');
-        const sortOrder = ref('default');
+        const sortOrder = ref('priceAsc'); // ✅ 1. 預設由低到高
 
         // ✅ 3. 字體縮放
         const fontSizeSteps = [1, 1.15, 1.3];
@@ -1277,8 +1277,18 @@
         // ✅ 4. 發貨通知模式
         const shipNotifyMode = ref('auto');
         const shipMessage = computed(() => {
-          const buyerName = (allOrders.value.find(o => o.orderId === orderToShip.value) || {}).name || '您';
-          return `【好事多會發生】\n您好 ${buyerName}，\n您的訂單已經幫您寄出囉！🎉\n物流單號：${shippingTrackingCode.value || '（請填入）'}\n\n感謝您的購買，收到商品後別忘了回來給我們評價喔！`;
+          const order = allOrders.value.find(o => o.orderId === orderToShip.value) || {};
+          const buyerName = order.name || '您';
+          const shopName = adminSettings.value['商城名稱'] || '好事多會發生';
+          const orderId = order.orderId || '';
+          // 組合商品清單
+          let itemsText = '';
+          if (order.items && order.items.length > 0) {
+            itemsText = '\n\n📦 訂單商品：\n' + order.items.map(i => `  • ${i.name}  x${i.quantity}  $${i.finalPrice * i.quantity}`).join('\n');
+          }
+          const totalText = order.totalAmount ? `\n\n💰 訂單金額：$${order.totalAmount}` : '';
+          const trackingText = shippingTrackingCode.value ? `\n\n🚚 物流單號：${shippingTrackingCode.value}` : '';
+          return `【${shopName}】\n您好 ${buyerName}，\n您的訂單已經幫您寄出囉！🎉${orderId ? '\n\n訂單編號：' + orderId : ''}${itemsText}${totalText}${trackingText}\n\n感謝您的購買，收到商品後別忘了回來給我們評價喔！`;
         });
         const copyShipMessage = () => { copyText(shipMessage.value); };
 
@@ -1687,25 +1697,28 @@
           if (!codeMatch) { await showAlert('格式錯誤', '請輸入純數字商品編號！', 'error'); return; }
           const productCode = codeMatch[0];
           isFetching.value = true;
+          // ✅ 5. 不清空搜尋框，讓用戶保持在搜尋頁等結果
           try {
             const res = await callAPI('fetchCostco', { code: productCode });
-            isFetching.value = false;
+            // 新增成功後載入商品，把新商品加入購物車
             await loadRemainingProducts();
             const newProd = allProducts.value.find(p => p.id === productCode);
+            isFetching.value = false;
             if (newProd) {
-              await showAlert('新增成功', res.message + '\n\n已自動加入購物車！', 'success');
               cart.value.push({...newProd, quantity: newProd.minQty});
+              await showAlert('✅ 新增成功', `${newProd.name}\n\n已自動加入購物車！`, 'success');
             } else {
-              await showAlert('新增成功', res.message + '\n\n商品已新增到商城！', 'success');
+              await showAlert('✅ 新增成功', res.message, 'success');
             }
+            // ✅ 5. 成功後才清空搜尋框
             searchQuery.value = '';
           } catch(e) {
             isFetching.value = false;
-            // ✅ 2. 0元或無法代購商品顯示友善提示，不顯示「網路錯誤」
             const msg = e.message || '';
-            if (msg.includes('無法線上代購') || msg.includes('售價為 $0') || msg.includes('無法代購')) {
+            if (msg.includes('無法線上代購') || msg.includes('售價為 $0') || msg.includes('無法代購') || msg.includes('倉庫限定')) {
               await showAlert('此商品無法代購', msg.split('，請親自')[0], 'info');
             }
+            // ✅ 5. 失敗時保留搜尋框內容，讓用戶可以再試
           }
         };
 
