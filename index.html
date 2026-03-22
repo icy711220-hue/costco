@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>好事多會發生代購系統 V7.7</title>
+  <title>好事多會發生代購系統 V7.8</title>
   <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <!-- Tailwind CSS -->
@@ -20,12 +20,12 @@
     /* ✅ 字體縮放 CSS 變數 */
     :root { --font-scale: 1.2; }
     html { font-size: calc(14px * var(--font-scale)); }
-    /* ✅ 1. 電腦版最大寬度居中，避免圖片過度拉伸 */
-    body { background-color: #f3f4f6; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
-    #app { max-width: 600px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; }
-    header, nav { max-width: 600px; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; }
-    .fixed.bottom-0 { max-width: 600px; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; }
-    /* ✅ 1. 商品圖片固定正方形比例，電腦版不變形 */
+    body { background-color: #e5e7eb; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
+    /* ✅ 2. 電腦版：app 置中最大 600px，不影響 sticky/fixed 定位 */
+    #app { max-width: 600px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
+    /* ✅ 2. fixed 元素限寬置中 */
+    .fixed-centered { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; }
+    /* ✅ 1. 商品圖片固定正方形比例 */
     .prod-img { aspect-ratio: 1; object-fit: cover; width: 100%; display: block; }
     [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -76,19 +76,19 @@
         <a href="https://lin.ee/xm6rIzB" class="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 rounded-lg font-bold shadow-lg flex items-center justify-center text-base mb-3">
           <i class="fa-solid fa-user-plus mr-2"></i>點我加入 LINE 官方帳號
         </a>
-        <!-- ✅ 2. 電腦版管理員用 LINE User ID 登入 -->
+        <!-- ✅ 訪客瀏覽按鈕 -->
+        <button @click="enterAsGuest" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-lg font-bold text-sm border border-gray-300">
+          <i class="fa-solid fa-eye mr-2 text-gray-400"></i>訪客瀏覽（僅可看商品，無法下單）
+        </button>
+        <!-- ✅ 4. 電腦版管理員登入移到最下面 -->
         <div class="mt-3 border-t border-gray-100 pt-3">
           <p class="text-xs text-gray-500 mb-2"><i class="fa-solid fa-desktop mr-1 text-gray-400"></i>電腦版管理員登入</p>
           <div class="flex gap-2">
             <input v-model="desktopLineId" type="text" placeholder="輸入您的 LINE User ID" class="flex-1 border rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-400 outline-none bg-gray-50">
             <button @click="loginWithLineId" :disabled="!desktopLineId.trim()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 disabled:bg-gray-300">登入</button>
           </div>
-          <p class="text-[10px] text-gray-400 mt-1">請在 LINE 中開啟商城，取得您的 User ID 後在此輸入</p>
+          <p class="text-[10px] text-gray-400 mt-1">在手機版會員頁取得您的 User ID 後輸入</p>
         </div>
-        <!-- ✅ 訪客瀏覽按鈕 -->
-        <button @click="enterAsGuest" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-lg font-bold text-sm border border-gray-300 mt-3">
-          <i class="fa-solid fa-eye mr-2 text-gray-400"></i>訪客瀏覽（僅可看商品，無法下單）
-        </button>
       </div>
     </div>
 
@@ -103,7 +103,7 @@
       <div class="mb-8 text-center">
         <i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i>
         <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">{{ adminSettings['商城名稱'] || '好事多會發生' }}</h1>
-        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.7</p>
+        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.8</p>
       </div>
       <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner">
         <div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div>
@@ -118,34 +118,27 @@
     </div>
 
     <!-- Header -->
-    <header v-show="!loading" class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md flex justify-between items-center">
+    <header v-show="!loading" class="bg-blue-600 text-white p-3 sticky top-0 z-50 shadow-md flex justify-between items-center">
       <!-- ✅ 3. 點標題重整，左邊加購物車圖示 -->
       <div @click="reloadPage" class="flex items-center gap-2 cursor-pointer select-none active:opacity-70 flex-1 min-w-0">
         <i class="fa-solid fa-cart-shopping text-lg flex-shrink-0" :class="isReloading ? 'fa-spin text-yellow-300' : 'text-white opacity-90'"></i>
-        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.7</span></h1>
+        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.8</span></h1>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <button @click="showFontSlider = !showFontSlider" class="text-white opacity-80 hover:opacity-100 text-xs bg-white bg-opacity-20 px-2 py-1 rounded flex items-center gap-1" title="調整字體大小">
           <i class="fa-solid fa-text-height"></i>
-          <span>字體</span>
         </button>
-        <!-- ✅ 4. 頭像 + VIP + 您好名字 -->
-        <div v-if="user && !isGuest" @click="handleNav('profile')" class="flex items-center gap-1.5 cursor-pointer select-none bg-white bg-opacity-15 hover:bg-opacity-25 px-2 py-1 rounded-lg">
+        <!-- ✅ 3. 只顯示頭像 + VIP，隱藏名字避免擠壓商城名稱 -->
+        <div v-if="user && !isGuest" @click="handleNav('profile')" class="flex items-center gap-1 cursor-pointer select-none bg-white bg-opacity-15 hover:bg-opacity-25 px-1.5 py-1 rounded-lg">
           <img :src="liffProfile?.pictureUrl||'https://placehold.co/28x28?text=U'" class="w-7 h-7 rounded-full border border-white border-opacity-50 flex-shrink-0">
-          <div class="flex flex-col items-start">
-            <div class="flex items-center gap-1">
-              <span class="text-[9px] font-bold px-1 py-0.5 rounded text-white leading-none" :style="'background:' + getVipColor(getUserVipLevel)">VIP{{ getUserVipLevel }}</span>
-              <span class="text-white text-[10px] font-bold max-w-[60px] truncate">{{ user?.name || liffProfile?.displayName || '您好' }}</span>
-            </div>
-          </div>
+          <span class="text-[8px] font-bold px-1 py-0.5 rounded text-white leading-none flex-shrink-0" :style="'background:' + getVipColor(getUserVipLevel)">VIP{{ getUserVipLevel }}</span>
         </div>
-        <div v-else-if="user && user.isAdmin" class="text-xs bg-red-500 px-2 py-1 rounded font-bold shadow">管理員</div>
         <div v-if="isGuest && guestBrowsing" class="text-xs bg-gray-500 px-2 py-1 rounded font-bold shadow">訪客</div>
       </div>
     </header>
 
     <!-- ✅ 1. 字體大小滑動條 -->
-    <div v-if="showFontSlider && !loading" class="sticky top-[56px] z-40 bg-blue-700 px-4 py-2 flex items-center gap-3 shadow-md">
+    <div v-if="showFontSlider && !loading" class="sticky top-[52px] z-40 bg-blue-700 px-4 py-2 flex items-center gap-3 shadow-md">
       <i class="fa-solid fa-text-height text-white text-sm opacity-80 flex-shrink-0"></i>
       <input type="range" v-model="fontScaleRaw" min="80" max="200" step="5"
         @input="applyFontScale"
@@ -1724,7 +1717,7 @@
     </div>
 
     <!-- 底部導航 -->
-    <nav v-show="!loading" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around text-[10px] text-gray-500 z-50" style="min-height:58px; padding-bottom:env(safe-area-inset-bottom,0px);">
+    <nav v-show="!loading" class="fixed bottom-0 bg-white border-t border-gray-200 flex justify-around text-[10px] text-gray-500 z-50" style="left:50%;transform:translateX(-50%);width:100%;max-width:600px;min-height:58px;padding-bottom:env(safe-area-inset-bottom,0px);">
       <div @click="handleNav('home')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer" :class="{'text-blue-600 font-bold':currentTab==='home'}"><i class="fa-solid fa-shop text-xl mb-0.5"></i><span>首頁</span></div>
       <div @click="handleNav('search')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer" :class="{'text-blue-600 font-bold':currentTab==='search'}"><i class="fa-solid fa-magnifying-glass text-xl mb-0.5"></i><span>搜尋</span></div>
       <div @click="handleNav('cart')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer relative" :class="{'text-blue-600 font-bold':currentTab==='cart'}">
