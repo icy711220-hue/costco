@@ -3307,13 +3307,14 @@
         // ✅ 即時掃描
         const scanCategoryOptions = computed(() => {
           const opts = [
-            { id: 'hot-buys', label: '🔥 促銷優惠', desc: 'Hot Buys 特價商品' },
-            { id: 'coupon', label: '🏷️ 精選優惠券', desc: 'Coupon 折扣商品' },
-            { id: 'hero-lowerprice', label: '📉 最新降價', desc: '近期降價商品' },
-            { id: 'Toogood', label: '⚡ 把握優惠', desc: 'Too Good to Miss' },
+            { id: 'hot-buys', label: '🔥 促銷優惠', desc: '58頁・Hot Buys特價' },
+            { id: 'coupon', label: '🏷️ 精選優惠券', desc: '21頁・Coupon折扣' },
+            { id: 'hero-lowerprice', label: '📉 最新降價', desc: '5頁・近期降價商品' },
+            { id: 'whats-new', label: '🆕 最新新品', desc: '52頁・近期上架新品' },
           ];
           if (adminSettings.value['掃描線上獨家商品(是/否)'] === '是') {
-            opts.push({ id: 'new-items', label: '✨ 線上獨家新品', desc: '已在設定開啟' });
+            // OnlineExclusive 有845頁，限制掃20頁避免超時
+            opts.push({ id: 'new-items', label: '✨ 線上獨家商品', desc: '845頁・限掃前20頁' });
           }
           return opts;
         });
