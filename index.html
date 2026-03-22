@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>好事多會發生代購系統 V7.8</title>
+  <title>好事多會發生代購系統 V7.9</title>
   <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <!-- Tailwind CSS -->
@@ -25,8 +25,27 @@
     #app { max-width: 600px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
     /* ✅ 2. fixed 元素限寬置中 */
     .fixed-centered { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; }
-    /* ✅ 1. 商品圖片固定正方形比例 */
-    .prod-img { aspect-ratio: 1; object-fit: cover; width: 100%; display: block; }
+    /* ✅ 3. 電腦版優化：加側邊欄，app 右移留空間 */
+    @media (min-width: 900px) {
+      body { background-color: #d1d5db; }
+      #desktop-sidebar { display: flex !important; }
+      #app { margin-left: calc(50% - 300px + 120px); }
+      .fixed[style*="50%"] { margin-left: 60px; }
+    }
+    @media (max-width: 899px) {
+      #desktop-sidebar { display: none !important; }
+    }
+    #desktop-sidebar {
+      display: none;
+      position: fixed;
+      left: calc(50% - 300px - 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 110px;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 40;
+    }
     [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -57,6 +76,32 @@
   </div>
 
   <div id="app" v-cloak>
+    <!-- ✅ 3. 電腦版側邊導航欄 -->
+    <div id="desktop-sidebar" v-show="!loading">
+      <div class="bg-white rounded-2xl shadow-xl p-3 flex flex-col gap-1.5 border border-gray-200">
+        <div class="text-[9px] text-gray-400 text-center font-bold mb-1 tracking-wider">MENU</div>
+        <div v-for="item in [
+          {tab:'home', icon:'fa-shop', label:'首頁'},
+          {tab:'search', icon:'fa-magnifying-glass', label:'搜尋'},
+          {tab:'cart', icon:'fa-cart-shopping', label:'購物車'},
+          {tab:'orders', icon:'fa-clipboard-list', label:'訂單'},
+          {tab:'profile', icon:'fa-user', label:'會員'},
+        ]" :key="item.tab"
+          @click="handleNav(item.tab)"
+          class="flex flex-col items-center py-2.5 px-2 rounded-xl cursor-pointer transition-all text-[10px] font-bold relative"
+          :class="currentTab===item.tab ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:bg-gray-100'">
+          <i :class="'fa-solid '+item.icon+' text-lg mb-1'"></i>
+          {{ item.label }}
+          <span v-if="item.tab==='cart' && cart.length>0" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold">{{ cart.length }}</span>
+        </div>
+        <div v-if="user?.isAdmin"
+          @click="currentTab='admin'"
+          class="flex flex-col items-center py-2.5 px-2 rounded-xl cursor-pointer transition-all text-[10px] font-bold mt-1 border-t border-gray-100 pt-2"
+          :class="currentTab==='admin' ? 'bg-red-600 text-white shadow' : 'text-gray-500 hover:bg-red-50 hover:text-red-600'">
+          <i class="fa-solid fa-screwdriver-wrench text-lg mb-1"></i>管理
+        </div>
+      </div>
+    </div>
     <!-- 系統 Alert -->
     <div v-if="sysAlert.show" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[200] p-4 backdrop-blur-sm">
       <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl text-center">
@@ -109,7 +154,7 @@
       <div class="mb-8 text-center">
         <i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i>
         <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">{{ adminSettings['商城名稱'] || '好事多會發生' }}</h1>
-        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.8</p>
+        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.9</p>
       </div>
       <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner">
         <div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div>
@@ -128,7 +173,7 @@
       <!-- ✅ 3. 點標題重整，左邊加購物車圖示 -->
       <div @click="reloadPage" class="flex items-center gap-2 cursor-pointer select-none active:opacity-70 flex-1 min-w-0">
         <i class="fa-solid fa-cart-shopping text-lg flex-shrink-0" :class="isReloading ? 'fa-spin text-yellow-300' : 'text-white opacity-90'"></i>
-        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.8</span></h1>
+        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.9</span></h1>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <button @click="showFontSlider = !showFontSlider" class="text-white opacity-80 hover:opacity-100 text-xs bg-white bg-opacity-20 px-2 py-1 rounded flex items-center gap-1" title="調整字體大小">
@@ -678,11 +723,24 @@
         <button @click="forceInitSpreadsheet" class="w-full bg-red-100 border border-red-300 text-red-700 py-2 rounded-lg font-bold text-xs mb-4 shadow-sm hover:bg-red-200">
           <i class="fa-solid fa-wrench mr-1"></i>🔧 強制初始化/修復資料庫
         </button>
-        <div class="flex gap-2 mb-4 overflow-x-auto hide-scrollbar pb-2">
-          <button v-for="tab in ['dashboard','stats','orders','categories','products','discounts','members','logs','settings']" :key="tab"
-            @click="adminTab = tab" :class="adminTab===tab?'bg-red-600 text-white shadow':'bg-white text-gray-600 border'"
-            class="px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap">
-            {{ {dashboard:'總覽',stats:'月報統計',orders:'訂單',categories:'分類',products:'商品',discounts:'折扣碼',members:'會員',logs:'日誌',settings:'設置'}[tab] }}
+        <!-- ✅ 2. 後台管理選單：固定 grid 顯示全部，不需橫向滾動 -->
+        <div class="grid grid-cols-3 gap-1.5 mb-4">
+          <button v-for="tab in [
+            {id:'dashboard', icon:'fa-gauge', label:'總覽'},
+            {id:'stats', icon:'fa-chart-bar', label:'月報'},
+            {id:'orders', icon:'fa-receipt', label:'訂單'},
+            {id:'members', icon:'fa-users', label:'會員'},
+            {id:'products', icon:'fa-box', label:'商品'},
+            {id:'categories', icon:'fa-tags', label:'分類'},
+            {id:'discounts', icon:'fa-ticket', label:'折扣碼'},
+            {id:'logs', icon:'fa-scroll', label:'日誌'},
+            {id:'settings', icon:'fa-gear', label:'設置'}
+          ]" :key="tab.id"
+            @click="adminTab = tab.id"
+            :class="adminTab===tab.id ? 'bg-red-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-600'"
+            class="flex flex-col items-center justify-center py-2.5 px-1 rounded-xl text-[10px] font-bold transition-all">
+            <i :class="'fa-solid ' + tab.icon + ' text-base mb-1'"></i>
+            {{ tab.label }}
           </button>
         </div>
 
@@ -1288,14 +1346,14 @@
 
         <!-- ✅ 3. 上方區：左圖右文（電腦橫排，手機縱排） -->
         <div class="flex flex-col sm:flex-row flex-shrink-0 border-b border-gray-100">
-        <!-- ✅ 左：商品圖片輪播 + 影片 -->
-        <div class="relative sm:w-64 sm:flex-shrink-0 bg-gray-900 flex flex-col">
+        <!-- ✅ 4. 左：商品圖片輪播 + 影片（白色背景） -->
+        <div class="relative sm:w-64 sm:flex-shrink-0 bg-white flex flex-col border-r border-gray-100">
           <!-- 主媒體區 -->
-          <div class="relative bg-black flex-shrink-0" style="height:220px;">
+          <div class="relative bg-white flex-shrink-0" style="height:220px;">
             <!-- 影片 -->
             <template v-if="detailMediaIdx < (selectedProduct?.videos?.length||0) && selectedProduct?.videos?.[detailMediaIdx]">
               <!-- MP4 直播 -->
-              <div v-if="selectedProduct.videos[detailMediaIdx].type === 'video'" class="w-full relative" style="height:220px; background:#000;">
+              <div v-if="selectedProduct.videos[detailMediaIdx].type === 'video'" class="w-full relative" style="height:220px; background:#f9fafb;">
                 <video
                   :key="'vid'+detailMediaIdx"
                   :src="selectedProduct.videos[detailMediaIdx].url"
@@ -1358,7 +1416,7 @@
             </div>
           </div>
           <!-- 縮圖列 -->
-          <div v-if="detailTotalMedia > 1" class="flex gap-1.5 p-2 overflow-x-auto bg-gray-800 hide-scrollbar flex-shrink-0">
+          <div v-if="detailTotalMedia > 1" class="flex gap-1.5 p-2 overflow-x-auto bg-gray-100 hide-scrollbar flex-shrink-0 border-t border-gray-200">
             <!-- 影片縮圖 -->
             <div v-for="(vid, vi) in (selectedProduct?.videos||[])" :key="'vt'+vi"
               @click="detailMediaIdx = vi"
@@ -2324,15 +2382,7 @@
             if (defCat) selectedCategory.value = defCat;
 
             allProducts.value = data.products;
-            // ✅ 2. 套用會員卡數量到商品最高購買量
-            const cardCount = parseInt(data.settings['會員卡數量']) || 1;
-            if (cardCount > 1) {
-              allProducts.value = allProducts.value.map(p => ({
-                ...p,
-                maxQty: Math.min(99, (p.baseMaxQty || p.maxQty || 99) * cardCount),
-                baseMaxQty: p.baseMaxQty || p.maxQty || 99
-              }));
-            }
+            // ✅ 1. cardCount 已在 GAS getProducts 計算，前端不需重複乘
             availableDiscountCodes.value = data.discounts || [];
             discounts.value = data.discounts || [];
             if (isGuest.value) {
@@ -2376,11 +2426,9 @@
         const loadRemainingProducts = async () => {
           try {
             const data = await callAPI('init', { lineId: liffProfile.value?.userId || '', limit: 0 });
+            // ✅ 1. cardCount 已在 GAS 計算，直接使用
             if (data.products && data.products.length > allProducts.value.length) {
-              const cardCount = parseInt(adminSettings.value['會員卡數量']) || 1;
-              allProducts.value = cardCount > 1
-                ? data.products.map(p => ({ ...p, maxQty: Math.min(99, (p.maxQty || 99) * cardCount), baseMaxQty: p.maxQty || 99 }))
-                : data.products;
+              allProducts.value = data.products;
             }
           } catch(e) {}
         };
