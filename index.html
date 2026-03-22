@@ -19,8 +19,10 @@
   <style>
     /* ✅ 字體縮放 CSS 變數 */
     :root { --font-scale: 1.2; }
-    body { background-color: #f3f4f6; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: calc(16px * var(--font-scale)); }
-    .fs-scale { font-size: calc(1em * var(--font-scale)); }
+    /* ✅ 4. 讓縮放套用全頁面：html font-size 控制，所有 rem 單位跟著變 */
+    html { font-size: calc(14px * var(--font-scale)); }
+    body { background-color: #f3f4f6; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
+    .fs-scale { font-size: 1rem; }
     [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -493,7 +495,13 @@
       <!-- 會員頁 -->
       <div v-show="currentTab === 'profile'" class="space-y-4">
         <div class="bg-white rounded-lg shadow p-4 relative overflow-hidden">
-          <div class="absolute top-0 right-0 bg-blue-100 text-blue-800 text-[10px] px-3 py-1 rounded-bl-lg font-bold">{{ user?.isAdmin ? '管理員' : '一般會員' }}</div>
+          <div class="absolute top-0 right-0 flex items-center gap-1 px-3 py-1 rounded-bl-lg font-bold"
+            :style="'background:' + getVipColor(getUserVipLevel) + '20'">
+            <!-- ✅ 1. VIP 等級標籤 -->
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded text-white"
+              :style="'background:' + getVipColor(getUserVipLevel)">VIP{{ getUserVipLevel }}</span>
+            <span class="text-[10px] font-bold" :style="'color:' + getVipColor(getUserVipLevel)">{{ user?.isAdmin ? '管理員' : '會員' }}</span>
+          </div>
           <div class="flex items-center gap-4 border-b pb-4 mb-4 mt-2">
             <img :src="liffProfile?.pictureUrl||'https://placehold.co/50x50?text=User'" class="w-14 h-14 rounded-full border-2 border-blue-100 shadow-sm">
             <div class="flex-1">
@@ -622,6 +630,21 @@
               <p class="text-[10px] text-gray-500">累積消費</p>
             </div>
           </div>
+          <!-- ✅ 1. VIP 等級進度顯示 -->
+          <div class="mt-3 border-t pt-3" v-if="getUserVipLevel < 10">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] text-gray-500">升級 VIP{{ getUserVipLevel + 1 }} 進度</span>
+              <span class="text-[10px] font-bold" :style="'color:' + getVipColor(getUserVipLevel + 1)">
+                還差 ${{ Math.max(0, (parseInt(adminSettings['VIP'+(getUserVipLevel+1)+'門檻']) || 0) - orders.filter(o=>['處理中','已出貨','已完成'].includes(o.status)).reduce((s,o)=>s+(parseInt(o.totalAmount)||0),0)) }}
+              </span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div class="h-2 rounded-full transition-all"
+                :style="'width:' + Math.min(100, Math.round(orders.filter(o=>['處理中','已出貨','已完成'].includes(o.status)).reduce((s,o)=>s+(parseInt(o.totalAmount)||0),0) / Math.max(1, parseInt(adminSettings['VIP'+(getUserVipLevel+1)+'門檻'])||1) * 100)) + '%; background:' + getVipColor(getUserVipLevel + 1)">
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 text-center text-[10px] text-gray-400" v-else>🎉 已達最高 VIP10 等級！</div>
         </div>
       </div>
 
@@ -968,15 +991,32 @@
         <div v-show="adminTab === 'members'" class="bg-white rounded-lg shadow p-4 border-t-4 border-red-500">
           <h3 class="font-bold mb-3">會員管理</h3>
           <div class="space-y-3">
-            <div v-for="member in adminMembers" :key="member.lineId" class="border p-3 rounded-lg flex items-center justify-between bg-gray-50">
-              <!-- ✅ 3. 點名字顯示會員詳細資料 -->
-              <div class="cursor-pointer hover:text-blue-600" @click="openAdminMemberDetail(member)">
-                <p class="font-bold text-sm text-gray-800 hover:text-blue-600 flex items-center gap-1">
-                  {{ member.name }} <i class="fa-solid fa-circle-info text-xs text-blue-400"></i>
-                </p>
-                <p class="text-xs text-gray-500 font-mono mt-0.5">{{ member.phone }}</p>
+            <div v-for="member in adminMembers" :key="member.lineId" class="border p-3 rounded-lg bg-gray-50">
+              <div class="flex items-center justify-between mb-2">
+                <!-- ✅ 3. 點名字顯示會員詳細資料 -->
+                <div class="cursor-pointer hover:text-blue-600" @click="openAdminMemberDetail(member)">
+                  <div class="flex items-center gap-2">
+                    <!-- ✅ 1. VIP 標籤 -->
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded text-white flex-shrink-0"
+                      :style="'background:' + ['#6b7280','#3b82f6','#22c55e','#eab308','#f97316','#a855f7','#06b6d4','#ec4899','#ef4444','#94a3b8','#4338ca'][member.vipLevel||0]">
+                      VIP{{ member.vipLevel || 0 }}
+                    </span>
+                    <p class="font-bold text-sm text-gray-800 hover:text-blue-600 flex items-center gap-1">
+                      {{ member.name }} <i class="fa-solid fa-circle-info text-xs text-blue-400"></i>
+                    </p>
+                  </div>
+                  <p class="text-xs text-gray-500 font-mono mt-0.5">{{ member.phone }}</p>
+                </div>
+                <button @click="toggleBlock(member)" :class="member.isBlocked?'bg-red-500 text-white border-red-500':'bg-white text-red-500 border-red-500 hover:bg-red-50'" class="text-xs border px-3 py-1.5 rounded font-bold shadow-sm">{{ member.isBlocked ? '解除封鎖' : '封鎖停權' }}</button>
               </div>
-              <button @click="toggleBlock(member)" :class="member.isBlocked?'bg-red-500 text-white border-red-500':'bg-white text-red-500 border-red-500 hover:bg-red-50'" class="text-xs border px-3 py-1.5 rounded font-bold shadow-sm">{{ member.isBlocked ? '解除封鎖' : '封鎖停權' }}</button>
+              <!-- ✅ 1. VIP 等級調整 -->
+              <div class="flex items-center gap-2 mt-1.5 border-t border-gray-100 pt-1.5">
+                <span class="text-[10px] text-gray-500 flex-shrink-0">調整等級：</span>
+                <select @change="setMemberVip(member, $event.target.value)" :value="member.vipLevel || 0"
+                  class="flex-1 border rounded p-1 text-xs bg-white">
+                  <option v-for="v in 11" :key="v-1" :value="v-1">VIP{{ v-1 }}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -1091,6 +1131,30 @@
             </div>
             <button @click="saveAdminSettings" :disabled="isBtnLoading.saveSettings" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg mt-2 text-sm font-bold shadow disabled:opacity-50">儲存所有設置</button>
             <!-- ✅ 5. 資料保密功能 -->
+            <!-- ✅ 1. VIP 會員分級設定 -->
+            <div class="border-t border-gray-100 pt-3 mt-3">
+              <h4 class="text-sm font-bold text-gray-700 mb-3"><i class="fa-solid fa-crown text-yellow-500 mr-1"></i>VIP 會員分級設定</h4>
+              <p class="text-[10px] text-gray-400 mb-3">每升一級代購費 -1%（若代購費為0%則不減）。VIP0 為預設等級，達到消費門檻自動升級。</p>
+              <div class="space-y-2">
+                <div v-for="n in 11" :key="n-1"
+                  class="flex items-center gap-2 rounded-lg p-2 border"
+                  :style="'background:' + ['#f9fafb','#eff6ff','#f0fdf4','#fefce8','#fff7ed','#fdf4ff','#f0f9ff','#fdf2f8','#fef2f2','#f8fafc','#1e1b4b'][n-1] + '; border-color:' + ['#e5e7eb','#bfdbfe','#bbf7d0','#fde68a','#fed7aa','#e9d5ff','#bae6fd','#fbcfe8','#fecaca','#cbd5e1','#4338ca'][n-1]">
+                  <div class="w-10 h-7 rounded font-bold text-[10px] flex items-center justify-center flex-shrink-0"
+                    :style="'background:' + ['#6b7280','#3b82f6','#22c55e','#eab308','#f97316','#a855f7','#06b6d4','#ec4899','#ef4444','#94a3b8','#4338ca'][n-1] + '; color:white'">
+                    VIP{{ n-1 }}
+                  </div>
+                  <span class="text-[10px] text-gray-500 w-16 flex-shrink-0">{{ n===1 ? '預設' : '消費滿' }}</span>
+                  <input v-if="n > 1"
+                    :value="adminSettings['VIP'+(n-1)+'門檻'] || ''"
+                    @input="adminSettings['VIP'+(n-1)+'門檻'] = $event.target.value"
+                    type="number" placeholder="金額" class="flex-1 border rounded p-1 text-xs bg-white focus:ring-1 outline-none text-center">
+                  <span v-else class="flex-1 text-[10px] text-gray-400">所有新會員</span>
+                  <span class="text-[10px] text-gray-500 flex-shrink-0 w-14 text-right">
+                    代購費 -{{ n-1 > 0 ? (n-1)+'%' : '0%' }}
+                  </span>
+                </div>
+              </div>
+            </div>
             <div class="border-t border-gray-100 pt-4 mt-4">
               <h4 class="text-xs font-bold text-gray-700 mb-2"><i class="fa-solid fa-shield-halved mr-1 text-gray-500"></i>試算表資料保護</h4>
               <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">點擊後將對試算表中的「會員列表」與「訂單紀錄」兩個工作表設定保護，僅擁有者可查看敏感資訊。</p>
@@ -1263,7 +1327,8 @@
             <span class="font-bold text-gray-800 flex-shrink-0" :style="'font-size:'+cartModalFontSize+'px'">${{ item.finalPrice * item.quantity }}</span>
           </div>
         </div>
-        <div class="mb-4 bg-gray-50 p-2 rounded border border-gray-200">
+        <!-- ✅ 2. 折扣碼：只有設定開啟時才顯示 -->
+        <div v-if="adminSettings['顯示折扣碼欄位'] === '是'" class="mb-4 bg-gray-50 p-2 rounded border border-gray-200">
           <div class="flex gap-2" v-if="!appliedDiscount">
             <input v-model="discountInput" type="text" placeholder="輸入折扣碼" class="flex-1 border rounded p-1.5 text-sm uppercase focus:ring-1 focus:ring-blue-500 outline-none">
             <button @click="applyDiscount" class="bg-gray-800 hover:bg-gray-900 text-white px-3 rounded text-sm font-bold">套用</button>
@@ -1601,7 +1666,10 @@
         const showFontSlider = ref(false);
         const fontScaleRaw = ref(120); // ✅ 4. 預設 120%
         const applyFontScale = () => {
-          document.documentElement.style.setProperty('--font-scale', (fontScaleRaw.value / 100).toFixed(2));
+          const scale = (fontScaleRaw.value / 100).toFixed(2);
+          document.documentElement.style.setProperty('--font-scale', scale);
+          // ✅ 4. 直接設 html font-size，讓所有 rem/em 單位全頁面跟著縮放
+          document.documentElement.style.fontSize = `calc(14px * ${scale})`;
         };
         const cycleFontSize = () => {
           fontSizeIdx.value = (fontSizeIdx.value + 1) % fontSizeSteps.length;
@@ -1706,8 +1774,14 @@
 
         watch(cart, (v) => { localStorage.setItem('myCart', JSON.stringify(v)); }, { deep: true });
 
-        // ✅ 1. 代購處理費
-        const handlingFeeRate = computed(() => (parseFloat(adminSettings.value['代購處理費(%)']) || 0) / 100);
+        // ✅ 1. 代購處理費 (VIP折扣後)
+        const handlingFeeRate = computed(() => {
+          const baseRate = (parseFloat(adminSettings.value['代購處理費(%)']) || 0) / 100;
+          if (baseRate <= 0) return 0;
+          const vipLevel = user.value?.vipLevel || 0;
+          const discounted = Math.max(0, baseRate - (vipLevel * 0.01));
+          return discounted;
+        });
         const handlingFee = computed(() => Math.round(cartSubtotal.value * handlingFeeRate.value));
         // ✅ 1. 退貨處理費率（供退貨計算用）
         const returnFeeRate = computed(() => (parseFloat(adminSettings.value['退貨處理費(%)']) || 0) / 100);
@@ -2329,6 +2403,10 @@
           try {
             const res = await callAPI('createOrder', orderData);
             showCheckoutConfirm.value = false;
+            // ✅ 3. 先灑花（在關閉 modal 後立刻，不被任何視窗擋住）
+            if (typeof confetti === 'function') {
+              setTimeout(() => confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 }, zIndex: 9999 }), 50);
+            }
             // ✅ 4. 買家角度：發給 LINE@ 官方帳號的訂購訊息
             const itemsForMsg = cart.value.map((i, idx) => `${idx+1}、${i.name}  x${i.quantity}  $${i.finalPrice * i.quantity}`).join('\n');
             const fullBuyerMsg = `【代購訂單確認】\n\n您好，我想代購以下商品：\n${itemsForMsg}\n\n─────────────────\n📋 訂單編號：${res.orderId}\n💰 應付總額：$${cartTotal.value}（含運費 $${currentShippingFee.value}）${handlingFee.value > 0 ? `、處理費 $${handlingFee.value}` : ''}\n${orderNotes.value ? '📝 備註：' + orderNotes.value + '\n' : ''}─────────────────\n🏦 匯款帳號：\n${bankInfo}\n─────────────────\n請確認後，我將盡速完成匯款並回報，謝謝！`;
@@ -2338,7 +2416,6 @@
                 await liffObj.sendMessages([{ type: 'text', text: fullBuyerMsg }]);
               }
             } catch(e) { /* 不影響下單流程 */ }
-            if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             await showAlert('訂單已成立 🎉','感謝您的訂購！\n請至「我的訂單」查看賣家匯款帳號，並盡速匯款回報！','success');
             cart.value = []; orderNotes.value = ''; appliedDiscount.value = null;
             // ✅ 7. 先顯示 loading 再跳轉，讓訂單有時間寫入
@@ -2625,6 +2702,20 @@
           if (confirmed) { await callAPI('toggleBlock', { lineId: member.lineId, isBlocked: newStatus, admin: user.value.name }); adminLoadData(); }
         };
 
+        // ✅ 1. 管理員手動調整 VIP 等級
+        const setMemberVip = async (member, level) => {
+          const lv = parseInt(level);
+          try {
+            await callAPI('setMemberVip', { lineId: member.lineId, vipLevel: lv, admin: user.value.name });
+            member.vipLevel = lv;
+          } catch(e) {}
+        };
+
+        // ✅ 1. VIP 等級顏色映射
+        const vipColors = ['#6b7280','#3b82f6','#22c55e','#eab308','#f97316','#a855f7','#06b6d4','#ec4899','#ef4444','#94a3b8','#4338ca'];
+        const getVipColor = (level) => vipColors[Math.min(level || 0, 10)];
+        const getUserVipLevel = computed(() => user.value?.vipLevel || 0);
+
         watch(adminTab, (v) => {
           if (v === 'dashboard') renderRecentChart(allOrders.value);
           if (v === 'stats') loadMonthlyStats();
@@ -2809,7 +2900,7 @@
           addToCart, updateQuantity, setQuantityDirect, removeFromCart, clearCart, checkout, openCheckout, showCheckoutConfirm, orderNotes, agreeToTerms, agreeProfileTerms, userCancelOrder,
           profileForm, saveProfile, contactForm, submitContact, showReviewForm, reviewForm, reviewTargetItem, openReviewForm, submitReview,
           showPaymentModal, selectedOrder, paymentForm, showPaymentForm, submitPayment, completeOrder, reorder,
-          adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, copySelectedOrdersInfo, toggleBlock,
+          adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, copySelectedOrdersInfo, toggleBlock, setMemberVip, vipColors, getVipColor, getUserVipLevel,
           forceRunScraper, saveAdminSettings, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo,
           showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder, adminSetTracking, shipNotifyMode, shipMessage, copyShipMessage,
           adminCategories, saveAdminCategories, showAdminProductEditor, editProdForm, adminProductSearch, adminFilteredProducts, openAdminProductEditor, adminSaveProduct,
