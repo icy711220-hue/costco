@@ -758,6 +758,12 @@
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-xs text-gray-500">累積營業額</p><p class="text-xl font-bold text-blue-600">${{ adminStats?.totalRevenue?.toLocaleString() || 0 }}</p></div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-xs text-gray-500">總訂單數</p><p class="text-xl font-bold text-green-600">{{ adminStats?.totalOrders || 0 }}</p></div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-400"><p class="text-xs text-gray-500">待處理訂單</p><p class="text-xl font-bold text-red-500">{{ allOrders.filter(o=>['待匯款','已匯款待確認','處理中'].includes(o.status)).length }}</p></div>
+            <!-- ✅ 1. 今日新增商品 -->
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-400">
+              <p class="text-xs text-gray-500">今日新增商品</p>
+              <p class="text-xl font-bold text-orange-500">{{ adminStats?.todayNewProducts || 0 }}</p>
+              <p class="text-[10px] text-gray-400 mt-1">共 {{ adminStats?.totalProducts || 0 }} 件上架</p>
+            </div>
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500"><p class="text-xs text-gray-500">會員總數</p><p class="text-xl font-bold text-purple-600">{{ adminMembers.length }}</p></div>
           </div>
 
@@ -2555,22 +2561,23 @@
 
         const openProductDetail = (p) => {
           const fixed = { ...p };
-          // ✅ 圖片去重：以去掉尺寸後綴的檔名為 key（好市多格式：_340_340.jpg）
+          // ✅ 3. 圖片去重：webp/UUID 用完整檔名，jpg 去尺寸後綴取最高解析度
           if (fixed.images && fixed.images.length > 0) {
-            const seenFn = new Set();
-            fixed.images = fixed.images
+            const imgGroups = {};
+            fixed.images
               .map(u => u && !u.startsWith('http') ? 'https://www.costco.com.tw' + u : u)
-              .filter(u => {
-                if (!u) return false;
-                const filename = u.split('/').pop().split('?')[0];
-                // 去掉 _340_340.jpg → baseName.jpg，_340x340.jpg → baseName.jpg
-                const baseFn = filename
-                  .replace(/_\d+_\d+(\.\w+)$/, '$1')
-                  .replace(/_\d+x\d+(\.\w+)$/, '$1');
-                if (seenFn.has(baseFn)) return false;
-                seenFn.add(baseFn);
-                return true;
+              .forEach(u => {
+                if (!u) return;
+                const fn = u.split('/').pop().split('?')[0];
+                // webp/UUID：直接用完整檔名；jpg：去尺寸後綴
+                const key = (/_\d+_\d+\.\w+$/.test(fn) || /_\d+x\d+\.\w+$/.test(fn))
+                  ? fn.replace(/_\d+_\d+(\.\w+)$/, '$1').replace(/_\d+x\d+(\.\w+)$/, '$1')
+                  : fn;
+                const m = fn.match(/_(\d+)_\d+\.\w+$/);
+                const size = m ? parseInt(m[1]) : 9999;
+                if (!imgGroups[key] || size > imgGroups[key].size) imgGroups[key] = { url: u, size };
               });
+            fixed.images = Object.values(imgGroups).map(g => g.url);
           }
           // ✅ 2. 修正商品介紹裡的相對圖片 URL
           if (fixed.description) {
