@@ -1292,23 +1292,44 @@
         <div class="relative sm:w-64 sm:flex-shrink-0 bg-gray-900 flex flex-col">
           <!-- 主媒體區 -->
           <div class="relative bg-black flex-shrink-0" style="height:220px;">
-            <!-- 影片：只在 URL 確實有效且 type 正確才播 -->
+            <!-- 影片 -->
             <template v-if="detailMediaIdx < (selectedProduct?.videos?.length||0) && selectedProduct?.videos?.[detailMediaIdx]">
-              <video v-if="selectedProduct.videos[detailMediaIdx].type === 'video'"
-                :key="'vid'+detailMediaIdx"
-                :src="selectedProduct.videos[detailMediaIdx].url"
-                controls
-                class="w-full object-contain bg-black"
-                style="height:220px;"></video>
+              <!-- MP4 直播 -->
+              <div v-if="selectedProduct.videos[detailMediaIdx].type === 'video'" class="w-full relative" style="height:220px; background:#000;">
+                <video
+                  :key="'vid'+detailMediaIdx"
+                  :src="selectedProduct.videos[detailMediaIdx].url"
+                  controls
+                  preload="metadata"
+                  crossorigin="anonymous"
+                  playsinline
+                  class="w-full h-full object-contain"
+                  @error="videoError = true"
+                  @loadstart="videoError = false">
+                  <source :src="selectedProduct.videos[detailMediaIdx].url" type="video/mp4">
+                </video>
+                <!-- 若無法播放提供直接連結 -->
+                <div v-if="videoError" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white text-center p-4">
+                  <i class="fa-solid fa-film text-3xl mb-2 text-gray-400"></i>
+                  <p class="text-xs mb-3 text-gray-300">瀏覽器無法內嵌播放此影片</p>
+                  <a :href="selectedProduct.videos[detailMediaIdx].url" target="_blank"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold">
+                    <i class="fa-solid fa-external-link-alt mr-1"></i>在新分頁開啟影片
+                  </a>
+                </div>
+              </div>
+              <!-- YouTube -->
               <iframe v-else-if="selectedProduct.videos[detailMediaIdx].type === 'youtube'"
                 :key="'yt'+detailMediaIdx"
-                :src="selectedProduct.videos[detailMediaIdx].url"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                :src="selectedProduct.videos[detailMediaIdx].url + '?rel=0&modestbranding=1'"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowfullscreen
                 class="w-full border-0"
                 style="height:220px;"></iframe>
-              <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-                <i class="fa-solid fa-play-circle text-4xl mr-2 text-gray-300"></i>影片格式不支援
+              <div v-else class="w-full flex flex-col items-center justify-center bg-gray-900 text-center p-4" style="height:220px;">
+                <i class="fa-solid fa-video-slash text-3xl mb-2 text-gray-500"></i>
+                <p class="text-xs text-gray-400 mb-2">影片格式不支援</p>
+                <a :href="selectedProduct.videos[detailMediaIdx].url" target="_blank" class="text-blue-400 text-xs underline">直接開啟連結</a>
               </div>
             </template>
             <!-- 圖片 -->
@@ -1323,11 +1344,11 @@
               </div>
             </template>
             <!-- 左右切換箭頭 -->
-            <button v-if="detailTotalMedia > 1" @click.stop="detailMediaIdx = (detailMediaIdx - 1 + detailTotalMedia) % detailTotalMedia"
+            <button v-if="detailTotalMedia > 1" @click.stop="detailMediaIdx = (detailMediaIdx - 1 + detailTotalMedia) % detailTotalMedia; videoError = false"
               class="absolute left-1 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-70 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs z-10">
               <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <button v-if="detailTotalMedia > 1" @click.stop="detailMediaIdx = (detailMediaIdx + 1) % detailTotalMedia"
+            <button v-if="detailTotalMedia > 1" @click.stop="detailMediaIdx = (detailMediaIdx + 1) % detailTotalMedia; videoError = false"
               class="absolute right-1 top-1/2 -translate-y-1/2 bg-black bg-opacity-40 hover:bg-opacity-70 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs z-10">
               <i class="fa-solid fa-chevron-right"></i>
             </button>
@@ -1889,6 +1910,7 @@
         const detailFontScaleRaw = ref(100);
         // ✅ 商品詳情媒體輪播索引
         const detailMediaIdx = ref(0);
+        const videoError = ref(false);
         const detailTotalMedia = computed(() => {
           if (!selectedProduct.value) return 0;
           return (selectedProduct.value.videos?.length || 0) + (selectedProduct.value.images?.length || 1);
@@ -2464,16 +2486,20 @@
 
         const openProductDetail = (p) => {
           const fixed = { ...p };
-          // ✅ 2. 修正圖片 URL，去除重複圖片
+          // ✅ 圖片去重：以去掉尺寸後綴的檔名為 key（好市多格式：_340_340.jpg）
           if (fixed.images && fixed.images.length > 0) {
-            const seen = new Set();
+            const seenFn = new Set();
             fixed.images = fixed.images
               .map(u => u && !u.startsWith('http') ? 'https://www.costco.com.tw' + u : u)
               .filter(u => {
-                // 去除 thumbnail 尺寸重複（同一圖只取最大版）
-                const base = u ? u.replace(/\?.*$/, '').replace(/_\d+x\d+\./, '.') : '';
-                if (!base || seen.has(base)) return false;
-                seen.add(base);
+                if (!u) return false;
+                const filename = u.split('/').pop().split('?')[0];
+                // 去掉 _340_340.jpg → baseName.jpg，_340x340.jpg → baseName.jpg
+                const baseFn = filename
+                  .replace(/_\d+_\d+(\.\w+)$/, '$1')
+                  .replace(/_\d+x\d+(\.\w+)$/, '$1');
+                if (seenFn.has(baseFn)) return false;
+                seenFn.add(baseFn);
                 return true;
               });
           }
@@ -2484,6 +2510,7 @@
           selectedProduct.value = fixed;
           detailTab.value = 'specs';
           detailMediaIdx.value = 0;
+          videoError.value = false;
           showProductDetail.value = true;
           if (p && p.id) {
             const hist = browseHistory.value.filter(id => id !== p.id);
@@ -3192,7 +3219,7 @@
           toggleSortOrder, getStatusColor, copyText, toggleFavorite, isFavorite, reviewThreshold, requestApproval, favorites,
           monthlyStats, isLoadingStats, latestMonth, totalAllTime, loadMonthlyStats,
           fontSizeLabel, cycleFontSize, termsSize, getCatIcon, catIconMap, showCostcoSearchModal, isBtnLoading,
-          detailFontSize, detailFontScaleRaw, detailMediaIdx, detailTotalMedia, isReloading, reloadPage, marqueeLines,
+          detailFontSize, detailFontScaleRaw, detailMediaIdx, detailTotalMedia, videoError, isReloading, reloadPage, marqueeLines,
           isRefreshingOrders, refreshOrders, protectSensitiveSheets,
           showTrackingModal, currentTrackingCode, openTrackingModal,
           showReturnModal, returnOrder, returnFeeAmount, returnRefundAmount, openReturnModal, confirmReturn,
