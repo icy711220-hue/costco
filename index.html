@@ -2561,23 +2561,28 @@
 
         const openProductDetail = (p) => {
           const fixed = { ...p };
-          // ✅ 3. 圖片去重：webp/UUID 用完整檔名，jpg 去尺寸後綴取最高解析度
+          // ✅ 圖片去重：找出最新 CDN 批次（最大6位數字前綴），只保留該批次
           if (fixed.images && fixed.images.length > 0) {
-            const imgGroups = {};
-            fixed.images
-              .map(u => u && !u.startsWith('http') ? 'https://www.costco.com.tw' + u : u)
-              .forEach(u => {
-                if (!u) return;
-                const fn = u.split('/').pop().split('?')[0];
-                // webp/UUID：直接用完整檔名；jpg：去尺寸後綴
-                const key = (/_\d+_\d+\.\w+$/.test(fn) || /_\d+x\d+\.\w+$/.test(fn))
-                  ? fn.replace(/_\d+_\d+(\.\w+)$/, '$1').replace(/_\d+x\d+(\.\w+)$/, '$1')
-                  : fn;
-                const m = fn.match(/_(\d+)_\d+\.\w+$/);
-                const size = m ? parseInt(m[1]) : 9999;
-                if (!imgGroups[key] || size > imgGroups[key].size) imgGroups[key] = { url: u, size };
+            let imgs = fixed.images.map(u => u && !u.startsWith('http') ? 'https://www.costco.com.tw' + u : u).filter(Boolean);
+            if (imgs.length > 1) {
+              const prefixMap = {};
+              imgs.forEach(u => {
+                const fn = u.split('/').pop().split('?')[0].split('.')[0];
+                const prefix = fn.replace(/\D/g, '').substring(0, 6);
+                if (prefix) prefixMap[prefix] = (prefixMap[prefix] || 0) + 1;
               });
-            fixed.images = Object.values(imgGroups).map(g => g.url);
+              const prefixes = Object.keys(prefixMap);
+              if (prefixes.length > 1) {
+                const latestPrefix = prefixes.sort().pop();
+                imgs = imgs.filter(u => {
+                  const fn = u.split('/').pop().split('?')[0].split('.')[0];
+                  return fn.replace(/\D/g, '').startsWith(latestPrefix);
+                });
+              }
+              const seenImg = new Set();
+              imgs = imgs.filter(u => { if (seenImg.has(u)) return false; seenImg.add(u); return true; });
+            }
+            fixed.images = imgs;
           }
           // ✅ 2. 修正商品介紹裡的相對圖片 URL
           if (fixed.description) {
