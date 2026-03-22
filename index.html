@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>好事多會發生代購系統 V7.9</title>
+  <title>好事多會發生代購系統 V8.0</title>
   <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <!-- Tailwind CSS -->
@@ -22,15 +22,15 @@
     html { font-size: calc(14px * var(--font-scale)); }
     body { background-color: #e5e7eb; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
     /* ✅ 2. 電腦版：app 置中最大 600px，不影響 sticky/fixed 定位 */
-    #app { max-width: 600px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
+    #app { max-width: 1200px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
     /* ✅ 2. fixed 元素限寬置中 */
-    .fixed-centered { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; }
-    /* ✅ 3. 電腦版優化：加側邊欄，app 右移留空間 */
+    .fixed-centered { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1200px; }
+    /* ✅ 3+4. 電腦版優化：寬度放寬到 1200px，加側邊欄 */
     @media (min-width: 900px) {
       body { background-color: #d1d5db; }
       #desktop-sidebar { display: flex !important; }
-      #app { margin-left: calc(50% - 300px + 120px); }
-      .fixed[style*="50%"] { margin-left: 60px; }
+      #app { max-width: 1200px; margin: 0 auto; }
+      #app header { max-width: 1200px; }
     }
     @media (max-width: 899px) {
       #desktop-sidebar { display: none !important; }
@@ -38,7 +38,7 @@
     #desktop-sidebar {
       display: none;
       position: fixed;
-      left: calc(50% - 300px - 10px);
+      left: calc(50% - 620px);
       top: 50%;
       transform: translateY(-50%);
       width: 110px;
@@ -54,6 +54,13 @@
     @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
     .splash-screen { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
     .costco-html img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
+    /* ✅ 5. 商品圖片：提升亮度與飽和度，讓圖片更鮮豔明亮 */
+    .prod-img-filter { filter: brightness(1.06) saturate(1.18) contrast(1.04); transition: filter 0.2s; }
+    .prod-img-filter:hover { filter: brightness(1.12) saturate(1.28) contrast(1.06); }
+    /* ✅ 4. 電腦版商品格更多欄位 */
+    @media (min-width: 900px) {
+      .desktop-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+    }
     /* ✅ 2. costco-html 內的 p/ul/li 正確顯示，不再顯示原始標籤 */
     .costco-html p { margin-bottom: 0.5em; }
     .costco-html ul, .costco-html ol { padding-left: 1.2em; margin-bottom: 0.5em; }
@@ -154,7 +161,7 @@
       <div class="mb-8 text-center">
         <i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i>
         <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">{{ adminSettings['商城名稱'] || '好事多會發生' }}</h1>
-        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.9</p>
+        <p class="text-sm font-light mt-1 opacity-90">商城系統 V8.0</p>
       </div>
       <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner">
         <div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div>
@@ -173,7 +180,7 @@
       <!-- ✅ 3. 點標題重整，左邊加購物車圖示 -->
       <div @click="reloadPage" class="flex items-center gap-2 cursor-pointer select-none active:opacity-70 flex-1 min-w-0">
         <i class="fa-solid fa-cart-shopping text-lg flex-shrink-0" :class="isReloading ? 'fa-spin text-yellow-300' : 'text-white opacity-90'"></i>
-        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.9</span></h1>
+        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V8.0</span></h1>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <button @click="showFontSlider = !showFontSlider" class="text-white opacity-80 hover:opacity-100 text-xs bg-white bg-opacity-20 px-2 py-1 rounded flex items-center gap-1" title="調整字體大小">
@@ -238,7 +245,7 @@
           </div>
         </div>
         <div v-if="homeFilteredProducts.length === 0" class="text-center text-gray-500 mt-10">目前此分類沒有商品</div>
-        <div :class="viewMode==='grid'?'grid grid-cols-3 gap-2':'flex flex-col gap-3'">
+        <div :class="viewMode==='grid'?'grid grid-cols-3 gap-2 desktop-grid':'flex flex-col gap-3'">
           <div v-for="product in homeFilteredProducts" :key="product.id" class="bg-white rounded-lg shadow overflow-hidden flex relative" :class="viewMode==='grid'?'flex-col':'flex-row'">
             <button @click.stop="toggleFavorite(product)" class="absolute top-1 right-1 z-20 w-6 h-6 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-sm">
               <i :class="isFavorite(product.id)?'fa-solid fa-heart text-red-500':'fa-regular fa-heart text-gray-400'"></i>
@@ -252,7 +259,7 @@
               <div v-if="isLowStock(product)" class="absolute bottom-1 right-1 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold shadow z-10">
                 <i class="fa-solid fa-fire-flame-curved mr-0.5"></i>剩{{ product.stock }}
               </div>
-              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" style="aspect-ratio:1;object-fit:cover;" class="w-full" :class="{'opacity-50 grayscale':product.stock===0}">
+              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" style="aspect-ratio:1;object-fit:cover;" class="w-full prod-img-filter" :class="{'opacity-50 grayscale':product.stock===0}">
               <div v-if="product.stock===0" class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center"><span class="text-white text-[10px] font-bold bg-black bg-opacity-60 px-2 py-0.5 rounded">已售完</span></div>
             </div>
             <div class="p-1.5 flex-1 flex flex-col">
@@ -333,14 +340,14 @@
             </button>
           </div>
         </div>
-        <div v-else :class="viewMode==='grid'?'grid grid-cols-3 gap-2':'flex flex-col gap-3'">
+        <div v-else :class="viewMode==='grid'?'grid grid-cols-3 gap-2 desktop-grid':'flex flex-col gap-3'">
           <div v-for="product in filteredProducts" :key="product.id" class="bg-white rounded-lg shadow overflow-hidden flex relative" :class="viewMode==='grid'?'flex-col':'flex-row'">
             <button @click.stop="toggleFavorite(product)" class="absolute top-1 right-1 z-20 w-6 h-6 bg-white bg-opacity-80 rounded-full flex items-center justify-center shadow-sm">
               <i :class="isFavorite(product.id)?'fa-solid fa-heart text-red-500':'fa-regular fa-heart text-gray-400'"></i>
             </button>
             <div class="relative cursor-pointer" :class="viewMode==='grid'?'w-full':'w-1/3'" @click="openProductDetail(product)">
               <div v-if="product.discount > 0" class="absolute top-1 left-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">省 ${{ product.discount }}</div>
-              <img :src="product.image||'https://placehold.co/150x150?text=No+Image'" style="aspect-ratio:1;object-fit:cover;" class="w-full">
+              <img :src="product.image||'https://placehold.co/150x150?text=No+Image'" style="aspect-ratio:1;object-fit:cover;" class="w-full prod-img-filter">
             </div>
             <div class="p-1.5 flex-1 flex flex-col">
               <h3 class="prod-name font-bold flex-1 cursor-pointer leading-tight text-gray-800 line-clamp-2" @click="openProductDetail(product)">{{ product.name }}</h3>
@@ -459,7 +466,7 @@
             <h3 class="font-bold border-b pb-2 mb-2 text-sm text-gray-700">訂單備註</h3>
             <textarea v-model="orderNotes" placeholder="有什麼想告訴賣家的嗎？" class="w-full border rounded p-2 text-sm h-16 resize-none focus:ring focus:ring-blue-100 outline-none"></textarea>
           </div>
-          <div class="fixed bottom-[60px] bg-white border-t p-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40" style="left:50%;transform:translateX(-50%);width:100%;max-width:600px;">
+          <div class="fixed bottom-[60px] bg-white border-t p-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40" style="left:50%;transform:translateX(-50%);width:100%;max-width:1200px;">
             <div>
               <p class="text-[11px] text-gray-500 font-mono">小計: ${{ cartSubtotal }} | 運費: ${{ currentShippingFee }}<span v-if="handlingFee > 0" class="text-indigo-500"> | 處理費: ${{ handlingFee }}</span><span v-if="appliedDiscount" class="text-red-500"> | 折扣優惠</span></p>
               <p class="text-xl font-bold text-red-600">總額: ${{ cartTotal }}</p>
@@ -936,8 +943,9 @@
           </div>
           <!-- ✅ 4. 批量設定分類 -->
           <div v-if="batchSelectedIds.length > 0" class="mt-3 bg-purple-50 border border-purple-200 rounded p-3">
-            <p class="text-xs font-bold text-purple-700 mb-2">已選 {{ batchSelectedIds.length }} 件商品 — 批量設定分類</p>
-            <div class="flex gap-2">
+            <p class="text-xs font-bold text-purple-700 mb-2">已選 {{ batchSelectedIds.length }} 件商品 — 批量操作</p>
+            <!-- 批量分類 -->
+            <div class="flex gap-2 mb-2">
               <select v-model="batchCategoryTarget" class="flex-1 border rounded p-2 text-sm bg-white">
                 <option value="">選擇要加入的分類...</option>
                 <option v-for="cat in categories.filter(c=>c.name!=='全部')" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
@@ -946,9 +954,22 @@
               </select>
               <button @click="applyBatchCategory" :disabled="!batchCategoryTarget || isBtnLoading.batchCat"
                 class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold disabled:opacity-50 hover:bg-purple-700">
-                <i v-if="isBtnLoading.batchCat" class="fa-solid fa-spinner fa-spin mr-1"></i>套用
+                <i v-if="isBtnLoading.batchCat" class="fa-solid fa-spinner fa-spin mr-1"></i>設定分類
               </button>
-              <button @click="batchSelectedIds=[]" class="bg-gray-200 text-gray-600 px-2 py-2 rounded text-xs font-bold">清除</button>
+            </div>
+            <!-- ✅ 1. 批量上架/下架 -->
+            <div class="flex gap-2">
+              <button @click="batchListUnlist(true)" :disabled="isBtnLoading.batchList"
+                class="flex-1 bg-green-600 text-white py-2 rounded text-xs font-bold hover:bg-green-700 disabled:opacity-50">
+                <i v-if="isBtnLoading.batchList" class="fa-solid fa-spinner fa-spin mr-1"></i>
+                <i v-else class="fa-solid fa-eye mr-1"></i>批量上架
+              </button>
+              <button @click="batchListUnlist(false)" :disabled="isBtnLoading.batchUnlist"
+                class="flex-1 bg-gray-500 text-white py-2 rounded text-xs font-bold hover:bg-gray-600 disabled:opacity-50">
+                <i v-if="isBtnLoading.batchUnlist" class="fa-solid fa-spinner fa-spin mr-1"></i>
+                <i v-else class="fa-solid fa-eye-slash mr-1"></i>批量下架
+              </button>
+              <button @click="batchSelectedIds=[]" class="bg-gray-200 text-gray-600 px-3 py-2 rounded text-xs font-bold">清除</button>
             </div>
           </div>
         </div>
@@ -1341,7 +1362,7 @@
 
     <!-- 商品詳情 Modal -->
     <div v-if="showProductDetail" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-2 sm:p-4 backdrop-blur-sm">
-      <div class="bg-white rounded-xl w-full shadow-2xl flex flex-col overflow-hidden relative" style="max-width:760px; max-height:92vh;">
+      <div class="bg-white rounded-xl w-full shadow-2xl flex flex-col overflow-hidden relative" style="max-width:900px; max-height:92vh;">
         <button @click="showProductDetail = false" class="absolute top-3 right-3 bg-black bg-opacity-40 text-white w-8 h-8 rounded-full z-20 hover:bg-opacity-60 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
 
         <!-- ✅ 3. 上方區：左圖右文（電腦橫排，手機縱排） -->
@@ -1394,7 +1415,7 @@
             <template v-else>
               <img
                 :src="(selectedProduct?.images || [selectedProduct?.image])[detailMediaIdx - (selectedProduct?.videos?.length||0)] || selectedProduct?.image"
-                class="w-full object-contain p-2 cursor-pointer"
+                class="w-full object-contain p-2 cursor-pointer prod-img-filter"
                 style="height:220px;"
                 @click="openLightbox((selectedProduct?.images || [selectedProduct?.image])[detailMediaIdx - (selectedProduct?.videos?.length||0)])">
               <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-25 text-center py-0.5">
@@ -1882,7 +1903,7 @@
     </div>
 
     <!-- 底部導航 -->
-    <nav v-show="!loading" class="fixed bottom-0 bg-white border-t border-gray-200 flex justify-around text-[10px] text-gray-500 z-50" style="left:50%;transform:translateX(-50%);width:100%;max-width:600px;min-height:58px;padding-bottom:env(safe-area-inset-bottom,0px);">
+    <nav v-show="!loading" class="fixed bottom-0 bg-white border-t border-gray-200 flex justify-around text-[10px] text-gray-500 z-50" style="left:50%;transform:translateX(-50%);width:100%;max-width:1200px;min-height:58px;padding-bottom:env(safe-area-inset-bottom,0px);">
       <div @click="handleNav('home')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer" :class="{'text-blue-600 font-bold':currentTab==='home'}"><i class="fa-solid fa-shop text-xl mb-0.5"></i><span>首頁</span></div>
       <div @click="handleNav('search')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer" :class="{'text-blue-600 font-bold':currentTab==='search'}"><i class="fa-solid fa-magnifying-glass text-xl mb-0.5"></i><span>搜尋</span></div>
       <div @click="handleNav('cart')" class="flex flex-col items-center justify-center py-1.5 px-1 flex-1 cursor-pointer relative" :class="{'text-blue-600 font-bold':currentTab==='cart'}">
@@ -3221,6 +3242,18 @@
         // ✅ 4. 批量設定商品分類
         const batchSelectedIds = ref([]);
         const batchCategoryTarget = ref('');
+        // ✅ 1. 批量上架/下架
+        const batchListUnlist = (list) => withBtnLock(list ? 'batchList' : 'batchUnlist', async () => {
+          if (!batchSelectedIds.value.length) return;
+          const action = list ? '上架' : '下架';
+          const confirmed = await showAlert('批量'+action, `確定要批量${action} ${batchSelectedIds.value.length} 件商品嗎？`, 'info', true);
+          if (!confirmed) return;
+          await callAPI('batchListUnlist', { ids: batchSelectedIds.value, list, admin: user.value.name });
+          batchSelectedIds.value = [];
+          await adminLoadData();
+          await showAlert('完成', `批量${action}完成！`, 'success');
+        });
+
         const applyBatchCategory = () => withBtnLock('batchCat', async () => {
           if (!batchCategoryTarget.value || batchSelectedIds.value.length === 0) return;
           const cat = batchCategoryTarget.value;
@@ -3276,7 +3309,7 @@
           // ✅ 3. 管理員會員詳細資料
           showAdminMemberDetail, adminSelectedMember, adminMemberOrders, openAdminMemberDetail,
           // ✅ 4+5. 批量設定分類、去重
-          batchSelectedIds, batchCategoryTarget, applyBatchCategory, runDeduplication
+          batchSelectedIds, batchCategoryTarget, applyBatchCategory, batchListUnlist, runDeduplication
         };
       }
     });
