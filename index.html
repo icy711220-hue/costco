@@ -953,32 +953,33 @@
               <button @click="runManualScan" :disabled="isBtnLoading.manualScan || scanSelectedCats.length === 0"
                 class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
                 <i v-if="isBtnLoading.manualScan" class="fa-solid fa-spinner fa-spin"></i>
-                <i v-else class="fa-solid fa-magnifying-glass-plus"></i>
-                {{ isBtnLoading.manualScan ? '掃描中...' : '開始掃描' }}
+                <i v-else class="fa-solid fa-satellite-dish"></i>
+                {{ isBtnLoading.manualScan ? '掃描進行中...' : '開始自動掃描' }}
               </button>
-              <!-- ✅ 2. 繼續掃描按鈕（有未完成任務時顯示） -->
-              <button v-if="scanResult && scanResult.hasMore" @click="runContinueScan" :disabled="isBtnLoading.manualScan"
-                class="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
-                <i v-if="isBtnLoading.manualScan" class="fa-solid fa-spinner fa-spin"></i>
-                <i v-else class="fa-solid fa-forward"></i>
-                繼續（剩 {{ scanResult.remaining }} 件）
+              <!-- 掃描中：取消按鈕 -->
+              <button v-if="isBtnLoading.manualScan" @click="cancelManualScan"
+                class="bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 px-4 py-2.5 rounded-lg font-bold text-sm">
+                <i class="fa-solid fa-stop mr-1"></i>取消
               </button>
             </div>
-            <!-- 掃描結果 -->
+            <!-- 掃描狀態 -->
             <div v-if="scanResult" class="mt-3 rounded-lg p-3 border"
-              :class="scanResult.hasMore ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'">
-              <p class="text-xs font-bold" :class="scanResult.hasMore ? 'text-orange-700' : (scanResult.totalNew > 0 ? 'text-green-700' : 'text-gray-600')">
-                {{ scanResult.message }}
-              </p>
-              <div class="text-[10px] text-gray-500 mt-1 flex gap-3 flex-wrap">
-                <span>🆕 新增 {{ scanResult.totalNew }}</span>
-                <span>🚫 過濾 {{ scanResult.totalFilter }}</span>
-                <span>⏱ {{ scanResult.elapsed }}秒</span>
-                <span v-if="scanResult.hasMore" class="text-orange-600 font-bold">⏸ 剩餘 {{ scanResult.remaining }} 件</span>
+              :class="scanResult.status==='done' ? 'bg-green-50 border-green-200' : scanResult.status==='idle' ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'">
+              <div class="flex items-center gap-2">
+                <i v-if="scanResult.status==='processing'||scanResult.status==='collecting'" class="fa-solid fa-spinner fa-spin text-blue-500 text-sm"></i>
+                <i v-else-if="scanResult.status==='done'" class="fa-solid fa-check-circle text-green-500 text-sm"></i>
+                <p class="text-xs font-bold flex-1"
+                  :class="scanResult.status==='done'?'text-green-700':scanResult.status==='idle'?'text-gray-500':'text-blue-700'">
+                  {{ scanResult.message }}
+                </p>
+              </div>
+              <div v-if="scanResult.status!=='idle'" class="text-[10px] text-gray-500 mt-1 flex gap-3">
+                <span>🆕 已新增 {{ scanResult.totalNew || 0 }}</span>
+                <span v-if="scanResult.remaining>0">⏳ 剩餘 {{ scanResult.remaining }}</span>
               </div>
               <details v-if="scanResult.log" class="mt-2">
-                <summary class="text-[10px] text-blue-500 cursor-pointer">查看詳細 log</summary>
-                <pre class="text-[9px] text-gray-500 mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded max-h-32 overflow-y-auto">{{ scanResult.log }}</pre>
+                <summary class="text-[10px] text-blue-500 cursor-pointer">詳細 log</summary>
+                <pre class="text-[9px] text-gray-500 mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded max-h-28 overflow-y-auto">{{ scanResult.log }}</pre>
               </details>
             </div>
           </div>
@@ -3324,35 +3325,61 @@
             { id: 'whats-new', label: '🆕 最新新品', desc: '52頁・近期上架新品' },
           ];
           if (adminSettings.value['掃描線上獨家商品(是/否)'] === '是') {
-            // OnlineExclusive 有845頁，限制掃20頁避免超時
             opts.push({ id: 'new-items', label: '✨ 線上獨家商品', desc: '845頁・限掃前20頁' });
           }
           return opts;
         });
         const scanSelectedCats = ref(['hot-buys']);
         const scanResult = ref(null);
+        let scanPollingTimer = null;
 
-        const runManualScan = () => withBtnLock('manualScan', async () => {
-          scanResult.value = null;
-          const res = await callAPI('manualScanProducts', {
-            categories: scanSelectedCats.value,
-            admin: user.value.name
-          });
-          scanResult.value = res;
-          if (res.totalNew > 0) await adminLoadData();
-          if (!res.hasMore && res.totalNew > 0) await showAlert('掃描完成 🎉', res.message, 'success');
-        });
+        const buildScanMsg = (st) => {
+          if (st.status === 'collecting') return '📡 正在收集商品編號，請稍候...';
+          if (st.status === 'processing') return `⏳ 掃描中，已新增 ${st.totalNew} 件，剩餘約 ${st.remaining} 件...`;
+          if (st.status === 'done') return `✅ 掃描完成！共新增 ${st.totalNew} 件商品`;
+          return '準備就緒';
+        };
 
-        // ✅ 2. 繼續上次未完成的掃描
-        const runContinueScan = () => withBtnLock('manualScan', async () => {
-          const res = await callAPI('manualScanProducts', {
-            categories: scanSelectedCats.value,
-            admin: user.value.name
-          });
-          scanResult.value = { ...res, totalNew: (scanResult.value?.totalNew || 0) + res.totalNew };
-          if (res.totalNew > 0) await adminLoadData();
-          if (!res.hasMore) await showAlert('掃描全部完成 🎉', `總計新增 ${scanResult.value.totalNew} 件商品`, 'success');
-        });
+        const startScanPolling = () => {
+          if (scanPollingTimer) clearInterval(scanPollingTimer);
+          scanPollingTimer = setInterval(async () => {
+            try {
+              const st = await callAPI('getScanStatus');
+              scanResult.value = { ...st, message: buildScanMsg(st) };
+              if (st.status === 'done' || st.status === 'idle') {
+                clearInterval(scanPollingTimer);
+                scanPollingTimer = null;
+                isBtnLoading.value['manualScan'] = false;
+                if (st.totalNew > 0) {
+                  await adminLoadData();
+                  await showAlert('掃描完成 🎉', `共新增 ${st.totalNew} 件商品！`, 'success');
+                }
+              }
+            } catch(e) {}
+          }, 8000);
+        };
+
+        const runManualScan = async () => {
+          if (isBtnLoading.value['manualScan']) return;
+          isBtnLoading.value['manualScan'] = true;
+          scanResult.value = { status: 'collecting', totalNew: 0, remaining: 0, message: '🚀 啟動掃描中...' };
+          try {
+            await callAPI('manualScanProducts', { categories: scanSelectedCats.value, admin: user.value.name });
+            startScanPolling();
+          } catch(e) {
+            isBtnLoading.value['manualScan'] = false;
+            scanResult.value = { status: 'idle', message: '啟動失敗，請重試' };
+          }
+        };
+
+        const cancelManualScan = async () => {
+          if (scanPollingTimer) { clearInterval(scanPollingTimer); scanPollingTimer = null; }
+          isBtnLoading.value['manualScan'] = false;
+          await callAPI('cancelScan');
+          scanResult.value = { status: 'idle', message: '已取消掃描' };
+        };
+
+        const runContinueScan = runManualScan;
 
         const runDeduplication = async () => {
           const confirmed = await showAlert('去除重複商品', '將掃描試算表中重複的商品編號，保留最後一筆（最新），刪除其餘重複的。確定執行？', 'info', true);
@@ -3435,7 +3462,7 @@
           showAdminMemberDetail, adminSelectedMember, adminMemberOrders, openAdminMemberDetail,
           // ✅ 4+5. 批量設定分類、去重
           batchSelectedIds, batchCategoryTarget, applyBatchCategory, batchListUnlist, runDeduplication,
-          scanCategoryOptions, scanSelectedCats, scanResult, runManualScan, runContinueScan,
+          scanCategoryOptions, scanSelectedCats, scanResult, runManualScan, cancelManualScan, runContinueScan,
         };
       }
     });
