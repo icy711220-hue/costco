@@ -116,7 +116,17 @@
           <i class="fa-solid fa-text-height"></i>
           <span>字體</span>
         </button>
-        <div v-if="user && user.isAdmin" class="text-xs bg-red-500 px-2 py-1 rounded font-bold shadow">管理員</div>
+        <!-- ✅ 4. 頭像 + VIP + 您好名字 -->
+        <div v-if="user && !isGuest" @click="handleNav('profile')" class="flex items-center gap-1.5 cursor-pointer select-none bg-white bg-opacity-15 hover:bg-opacity-25 px-2 py-1 rounded-lg">
+          <img :src="liffProfile?.pictureUrl||'https://placehold.co/28x28?text=U'" class="w-7 h-7 rounded-full border border-white border-opacity-50 flex-shrink-0">
+          <div class="flex flex-col items-start">
+            <div class="flex items-center gap-1">
+              <span class="text-[9px] font-bold px-1 py-0.5 rounded text-white leading-none" :style="'background:' + getVipColor(getUserVipLevel)">VIP{{ getUserVipLevel }}</span>
+              <span class="text-white text-[10px] font-bold max-w-[60px] truncate">{{ user?.name || liffProfile?.displayName || '您好' }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="user && user.isAdmin" class="text-xs bg-red-500 px-2 py-1 rounded font-bold shadow">管理員</div>
         <div v-if="isGuest && guestBrowsing" class="text-xs bg-gray-500 px-2 py-1 rounded font-bold shadow">訪客</div>
       </div>
     </header>
@@ -732,11 +742,21 @@
           <div v-if="isLoadingStats" class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block text-blue-400"></i>載入月報中...</div>
           <div v-else-if="monthlyStats.length === 0" class="text-center text-gray-500 py-10">尚無訂單資料可統計</div>
           <div v-else>
+            <!-- ✅ 3. 本月 KPI 卡片 -->
             <div class="grid grid-cols-2 gap-3">
-              <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-xs text-gray-500">本月訂單數</p><p class="text-2xl font-bold text-blue-600">{{ latestMonth?.orderCount || 0 }}</p><p v-if="latestMonth?.growthRate !== null" class="text-xs mt-1" :class="latestMonth.growthRate >= 0 ? 'text-green-600' : 'text-red-500'"><i class="fa-solid" :class="latestMonth.growthRate >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'"></i> {{ Math.abs(latestMonth.growthRate) }}% 較上月</p></div>
-              <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-xs text-gray-500">本月入帳總額</p><p class="text-2xl font-bold text-green-600">${{ (latestMonth?.totalAmount||0).toLocaleString() }}</p></div>
-              <!-- ✅ 3. 淨賺改為代購處理費+運費 -->
-              <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+              <div class="bg-white p-3 rounded-lg shadow border-l-4 border-blue-500">
+                <p class="text-xs text-gray-500">本月訂單數</p>
+                <p class="text-2xl font-bold text-blue-600">{{ latestMonth?.orderCount || 0 }}</p>
+                <p v-if="latestMonth?.growthRate !== null && latestMonth?.growthRate !== undefined" class="text-xs mt-1" :class="latestMonth.growthRate >= 0 ? 'text-green-600' : 'text-red-500'">
+                  <i class="fa-solid" :class="latestMonth.growthRate >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'"></i> {{ Math.abs(latestMonth.growthRate) }}% 較上月
+                </p>
+              </div>
+              <div class="bg-white p-3 rounded-lg shadow border-l-4 border-green-500">
+                <p class="text-xs text-gray-500">本月入帳總額</p>
+                <p class="text-2xl font-bold text-green-600">${{ (latestMonth?.totalAmount||0).toLocaleString() }}</p>
+                <p class="text-[10px] text-gray-400 mt-1">均單 ${{ latestMonth?.orderCount > 0 ? Math.round((latestMonth?.totalAmount||0) / latestMonth.orderCount).toLocaleString() : 0 }}</p>
+              </div>
+              <div class="bg-white p-3 rounded-lg shadow border-l-4 border-yellow-500">
                 <p class="text-xs text-gray-500">本月淨賺（處理費+運費）</p>
                 <p class="text-2xl font-bold text-yellow-600">${{ (latestMonth?.netProfit||0).toLocaleString() }}</p>
                 <div class="text-[10px] text-gray-400 mt-1 space-y-0.5" v-if="latestMonth">
@@ -744,24 +764,46 @@
                   <p><i class="fa-solid fa-truck mr-1 text-blue-400"></i>運費：${{ (latestMonth.totalShipping||0).toLocaleString() }}</p>
                 </div>
               </div>
-              <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500"><p class="text-xs text-gray-500">累積總營收</p><p class="text-2xl font-bold text-purple-600">${{ totalAllTime.toLocaleString() }}</p></div>
+              <div class="bg-white p-3 rounded-lg shadow border-l-4 border-purple-500">
+                <p class="text-xs text-gray-500">累積總營收</p>
+                <p class="text-2xl font-bold text-purple-600">${{ totalAllTime.toLocaleString() }}</p>
+                <p class="text-[10px] text-gray-400 mt-1">共 {{ allOrders.filter(o=>o.status!=='已取消').length }} 筆有效訂單</p>
+              </div>
             </div>
+            <!-- ✅ 3. 待處理訂單概況 -->
+            <div class="bg-white rounded-lg shadow p-4">
+              <h3 class="font-bold text-sm mb-3 text-gray-700"><i class="fa-solid fa-chart-pie mr-1 text-blue-500"></i>訂單狀態分佈</h3>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div v-for="s in [['待匯款','text-red-500','bg-red-50'],['處理中','text-yellow-600','bg-yellow-50'],['已出貨','text-green-600','bg-green-50'],['已完成','text-gray-500','bg-gray-50'],['已取消','text-gray-400','bg-gray-50'],['退貨處理中','text-orange-500','bg-orange-50']]" :key="s[0]" :class="s[2]" class="rounded p-2">
+                  <p class="text-lg font-bold" :class="s[1]">{{ allOrders.filter(o=>o.status===s[0]).length }}</p>
+                  <p class="text-[9px] text-gray-500">{{ s[0] }}</p>
+                </div>
+              </div>
+            </div>
+            <!-- ✅ 3. 圖表 -->
             <div class="bg-white p-4 rounded-lg shadow"><h3 class="font-bold text-sm mb-3 text-gray-700"><i class="fa-solid fa-chart-line mr-1 text-blue-500"></i>月營業額趨勢</h3><div class="relative h-52 w-full"><canvas id="monthlyRevenueChart"></canvas></div></div>
+            <!-- ✅ 3. 最佳月份 -->
+            <div class="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-lg p-4 text-white" v-if="monthlyStats.length > 0">
+              <p class="text-xs opacity-80 mb-1"><i class="fa-solid fa-trophy mr-1"></i>歷史最佳月份</p>
+              <p class="font-bold text-lg">{{ [...monthlyStats].sort((a,b)=>b.totalAmount-a.totalAmount)[0]?.month }}</p>
+              <p class="text-sm opacity-90">入帳 ${{ ([...monthlyStats].sort((a,b)=>b.totalAmount-a.totalAmount)[0]?.totalAmount||0).toLocaleString() }} ｜ {{ [...monthlyStats].sort((a,b)=>b.totalAmount-a.totalAmount)[0]?.orderCount }} 筆訂單</p>
+            </div>
+            <!-- ✅ 3. 月份明細表 -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
               <h3 class="font-bold text-sm p-4 pb-2 text-gray-700">各月份明細</h3>
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
-                  <!-- ✅ 3. 表頭加入處理費欄位 -->
-                  <thead class="bg-gray-50 text-xs text-gray-500"><tr><th class="px-3 py-2 text-left">月份</th><th class="px-2 py-2 text-right">單數</th><th class="px-2 py-2 text-right">入帳</th><th class="px-2 py-2 text-right">處理費</th><th class="px-2 py-2 text-right">運費</th><th class="px-2 py-2 text-right">淨賺</th><th class="px-2 py-2 text-right">增減</th></tr></thead>
+                  <thead class="bg-gray-50 text-xs text-gray-500"><tr><th class="px-3 py-2 text-left">月份</th><th class="px-2 py-2 text-right">單數</th><th class="px-2 py-2 text-right">均單</th><th class="px-2 py-2 text-right">入帳</th><th class="px-2 py-2 text-right">處理費</th><th class="px-2 py-2 text-right">運費</th><th class="px-2 py-2 text-right">淨賺</th><th class="px-2 py-2 text-right">增減</th></tr></thead>
                   <tbody>
                     <tr v-for="m in [...monthlyStats].reverse()" :key="m.month" class="border-t border-gray-100 hover:bg-gray-50">
                       <td class="px-3 py-2 font-mono text-xs text-gray-700">{{ m.month }}</td>
                       <td class="px-2 py-2 text-right font-bold">{{ m.orderCount }}</td>
+                      <td class="px-2 py-2 text-right text-gray-500 text-xs">${{ m.orderCount > 0 ? Math.round(m.totalAmount/m.orderCount).toLocaleString() : 0 }}</td>
                       <td class="px-2 py-2 text-right text-blue-600 font-bold text-xs">${{ m.totalAmount.toLocaleString() }}</td>
                       <td class="px-2 py-2 text-right text-indigo-500 text-xs">${{ (m.totalHandling||0).toLocaleString() }}</td>
                       <td class="px-2 py-2 text-right text-blue-400 text-xs">${{ (m.totalShipping||0).toLocaleString() }}</td>
                       <td class="px-2 py-2 text-right text-yellow-600 font-bold text-xs">${{ m.netProfit.toLocaleString() }}</td>
-                      <td class="px-2 py-2 text-right text-xs font-bold"><span v-if="m.growthRate===null" class="text-gray-400">—</span><span v-else :class="m.growthRate>=0?'text-green-600':'text-red-500'"><i class="fa-solid" :class="m.growthRate>=0?'fa-arrow-up':'fa-arrow-down'"></i> {{ Math.abs(m.growthRate) }}%</span></td>
+                      <td class="px-2 py-2 text-right text-xs font-bold"><span v-if="m.growthRate===null||m.growthRate===undefined" class="text-gray-400">—</span><span v-else :class="m.growthRate>=0?'text-green-600':'text-red-500'"><i class="fa-solid" :class="m.growthRate>=0?'fa-arrow-up':'fa-arrow-down'"></i> {{ Math.abs(m.growthRate) }}%</span></td>
                     </tr>
                   </tbody>
                 </table>
@@ -1134,7 +1176,7 @@
             <!-- ✅ 1. VIP 會員分級設定 -->
             <div class="border-t border-gray-100 pt-3 mt-3">
               <h4 class="text-sm font-bold text-gray-700 mb-3"><i class="fa-solid fa-crown text-yellow-500 mr-1"></i>VIP 會員分級設定</h4>
-              <p class="text-[10px] text-gray-400 mb-3">每升一級代購費 -1%（若代購費為0%則不減）。VIP0 為預設等級，達到消費門檻自動升級。</p>
+              <p class="text-[10px] text-gray-400 mb-3">每升一級代購<b>加價</b>折扣 -1%（VIP折扣針對商品加價費，處理費不受影響）。VIP0 為預設等級。</p>
               <div class="space-y-2">
                 <div v-for="n in 11" :key="n-1"
                   class="flex items-center gap-2 rounded-lg p-2 border"
@@ -1149,8 +1191,8 @@
                     @input="adminSettings['VIP'+(n-1)+'門檻'] = $event.target.value"
                     type="number" placeholder="金額" class="flex-1 border rounded p-1 text-xs bg-white focus:ring-1 outline-none text-center">
                   <span v-else class="flex-1 text-[10px] text-gray-400">所有新會員</span>
-                  <span class="text-[10px] text-gray-500 flex-shrink-0 w-14 text-right">
-                    代購費 -{{ n-1 > 0 ? (n-1)+'%' : '0%' }}
+                  <span class="text-[10px] text-gray-500 flex-shrink-0 w-16 text-right">
+                    加價折 -{{ n-1 > 0 ? (n-1)+'%' : '0%' }}
                   </span>
                 </div>
               </div>
@@ -1341,8 +1383,16 @@
         <div class="border-t border-gray-200 pt-3 mb-4">
           <div class="flex justify-between text-sm mb-1.5 text-gray-600"><span>商品小計</span><span class="font-mono">${{ cartSubtotal }}</span></div>
           <div class="flex justify-between text-sm mb-1.5 text-gray-500"><span>物流運費</span><span class="font-mono">{{ currentShippingFee === 0 ? '$0 (免運)' : '$'+currentShippingFee }}</span></div>
-          <!-- ✅ 1. 顯示代購處理費 -->
-          <div v-if="handlingFee > 0" class="flex justify-between text-sm mb-1.5 text-indigo-600"><span><i class="fa-solid fa-hand-holding-dollar mr-1 text-xs"></i>代購處理費 ({{ adminSettings['代購處理費(%)'] }}%)</span><span class="font-mono">+${{ handlingFee }}</span></div>
+          <!-- ✅ 2. 代購處理費（固定費率，與VIP無關） -->
+          <div v-if="handlingFee > 0" class="flex justify-between text-sm mb-1.5 text-indigo-600">
+            <span><i class="fa-solid fa-hand-holding-dollar mr-1 text-xs"></i>代購處理費 ({{ adminSettings['代購處理費(%)'] }}%)</span>
+            <span class="font-mono">+${{ handlingFee }}</span>
+          </div>
+          <!-- ✅ 1+2. VIP代購加價折扣（VIP才有） -->
+          <div v-if="vipMarkupDiscount > 0" class="flex justify-between text-sm mb-1.5 text-green-600 font-bold">
+            <span><i class="fa-solid fa-crown mr-1 text-xs"></i>VIP{{ getUserVipLevel }} 代購加價折扣</span>
+            <span class="font-mono">-${{ vipMarkupDiscount }}</span>
+          </div>
           <div v-if="appliedDiscount" class="flex justify-between text-sm mb-2 text-red-500 font-bold"><span>折扣折抵</span><span class="font-mono" v-if="appliedDiscount.type==='deduct'">-${{ appliedDiscount.value }}</span><span class="font-mono" v-else>打 {{ appliedDiscount.value * 10 }} 折</span></div>
           <div class="flex justify-between font-bold text-xl text-red-600 mt-3 pt-3 border-t border-dashed border-gray-200"><span>應付總額</span><span>${{ cartTotal }}</span></div>
         </div>
@@ -1774,31 +1824,40 @@
 
         watch(cart, (v) => { localStorage.setItem('myCart', JSON.stringify(v)); }, { deep: true });
 
-        // ✅ 1. 代購處理費 (VIP折扣後)
-        const handlingFeeRate = computed(() => {
-          const baseRate = (parseFloat(adminSettings.value['代購處理費(%)']) || 0) / 100;
-          if (baseRate <= 0) return 0;
-          const vipLevel = user.value?.vipLevel || 0;
-          const discounted = Math.max(0, baseRate - (vipLevel * 0.01));
-          return discounted;
-        });
+        // ✅ 1. 代購處理費（固定費率，不受VIP影響）
+        const handlingFeeRate = computed(() => (parseFloat(adminSettings.value['代購處理費(%)']) || 0) / 100);
         const handlingFee = computed(() => Math.round(cartSubtotal.value * handlingFeeRate.value));
-        // ✅ 1. 退貨處理費率（供退貨計算用）
+
+        // ✅ 1. 代購加價折扣（VIP每升一級 -1%，但加價已反映在商品售價，這裡計算VIP退回的折扣金額）
+        const markupRate = computed(() => (parseFloat(adminSettings.value['代購加價比例(%)']) || 0) / 100);
+        const vipMarkupDiscount = computed(() => {
+          const vipLevel = user.value?.vipLevel || 0;
+          if (vipLevel === 0 || markupRate.value <= 0) return 0;
+          // VIP折扣：每升一級退還1%的加價，最多退回全部加價
+          const discountRate = Math.min(vipLevel * 0.01, markupRate.value);
+          // 計算原始商品成本（反推）
+          const costTotal = cart.value.reduce((acc, item) => {
+            const costPrice = Math.round(item.finalPrice / (1 + markupRate.value));
+            return acc + costPrice * item.quantity;
+          }, 0);
+          return Math.round(costTotal * discountRate);
+        });
         const returnFeeRate = computed(() => (parseFloat(adminSettings.value['退貨處理費(%)']) || 0) / 100);
 
         const cartTotal = computed(() => {
-          let total = cartSubtotal.value + handlingFee.value + currentShippingFee.value;
+          // ✅ 1+2. 小計 + 處理費 + 運費 - VIP代購加價折扣
+          let total = cartSubtotal.value + handlingFee.value + currentShippingFee.value - vipMarkupDiscount.value;
           if (appliedDiscount.value) {
             if(appliedDiscount.value.type === 'deduct') total -= appliedDiscount.value.value;
-            else if(appliedDiscount.value.type === 'discount') total = (cartSubtotal.value * appliedDiscount.value.value) + handlingFee.value + currentShippingFee.value;
+            else if(appliedDiscount.value.type === 'discount') total = (cartSubtotal.value * appliedDiscount.value.value) + handlingFee.value + currentShippingFee.value - vipMarkupDiscount.value;
           }
           return Math.max(0, Math.round(total));
         });
 
-        // ✅ 6. 購物車節省金額（不含運費）
+        // ✅ 6. 購物車節省金額（含VIP折扣）
         const cartSavings = computed(() => {
           const originalTotal = cart.value.reduce((acc, item) => acc + (item.originalPrice || item.finalPrice) * item.quantity, 0);
-          let savings = originalTotal - cartSubtotal.value;
+          let savings = originalTotal - cartSubtotal.value + vipMarkupDiscount.value;
           if (appliedDiscount.value) {
             if(appliedDiscount.value.type === 'deduct') savings += appliedDiscount.value.value;
             else if(appliedDiscount.value.type === 'discount') savings += cartSubtotal.value * (1 - appliedDiscount.value.value);
@@ -2888,7 +2947,7 @@
         return {
           currentTab, loading, loadingProgress, loadingText, user, liffProfile, adminSettings, categories, selectedCategory, viewMode, sortOrder,
           twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
-          allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, cartSavings, handlingFee, orders, orderFilter, filteredUserOrders,
+          allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, cartSavings, handlingFee, handlingFeeRate, vipMarkupDiscount, markupRate, orders, orderFilter, filteredUserOrders,
           addonProducts, addonProductsDisplay, refreshAddonProducts, isRotatingAddon, browseHistory, browseHistoryProducts,
           isLowStock, lowStockThreshold, isPopular, homeFilterKeywords, isHomeFiltered,
           hasMoreProducts, displayedCount, isLoadingMore, loadMoreProducts,
