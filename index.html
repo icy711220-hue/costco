@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     /* ✅ 字體縮放 CSS 變數 */
-    :root { --font-scale: 1; }
+    :root { --font-scale: 1.2; }
     body { background-color: #f3f4f6; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: calc(16px * var(--font-scale)); }
     .fs-scale { font-size: calc(1em * var(--font-scale)); }
     [v-cloak] { display: none; }
@@ -122,11 +122,11 @@
     <!-- ✅ 1. 字體大小滑動條 -->
     <div v-if="showFontSlider && !loading" class="sticky top-[56px] z-40 bg-blue-700 px-4 py-2 flex items-center gap-3 shadow-md">
       <i class="fa-solid fa-text-height text-white text-sm opacity-80 flex-shrink-0"></i>
-      <input type="range" v-model="fontScaleRaw" min="90" max="160" step="5"
+      <input type="range" v-model="fontScaleRaw" min="80" max="200" step="5"
         @input="applyFontScale"
         class="flex-1 h-2 accent-white cursor-pointer">
       <span class="text-white text-xs font-bold w-10 text-right opacity-90 flex-shrink-0">{{ fontScaleRaw }}%</span>
-      <button @click="showFontSlider=false; fontScaleRaw=100; applyFontScale()" class="text-white opacity-70 hover:opacity-100 text-[10px] ml-1 flex-shrink-0 bg-white bg-opacity-20 px-2 py-0.5 rounded">重設</button>
+      <button @click="showFontSlider=false; fontScaleRaw=120; applyFontScale()" class="text-white opacity-70 hover:opacity-100 text-[10px] ml-1 flex-shrink-0 bg-white bg-opacity-20 px-2 py-0.5 rounded">重設</button>
     </div>
 
     <!-- ✅ 5. 多組跑馬燈輪播 -->
@@ -140,7 +140,7 @@
     <main v-show="!loading" class="p-3">
 
       <!-- 首頁 -->
-      <div v-show="currentTab === 'home'">
+      <div v-show="currentTab === 'home'" style="min-height:calc(100vh - 130px);">
         <div class="flex justify-between items-center mb-3">
           <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar flex-1 items-center">
             <button @click="selectedCategory = '❤️ 收藏'" :class="selectedCategory==='❤️ 收藏'?'bg-red-500 text-white shadow':'bg-white text-red-500 border border-red-200'" class="whitespace-nowrap px-3 py-1.5 rounded-full text-[13px] font-bold flex items-center">
@@ -260,7 +260,7 @@
       </div>
 
       <!-- 購物車 -->
-      <div v-show="currentTab === 'cart'">
+      <div v-show="currentTab === 'cart'" style="min-height:calc(100vh - 130px);">
         <div v-if="cart.length === 0" class="text-center text-gray-500 mt-10">
           <i class="fa-solid fa-cart-shopping text-4xl text-gray-300 mb-3"></i><p>購物車是空的</p>
           <button @click="handleNav('home')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">去逛逛</button>
@@ -400,13 +400,21 @@
         <div v-if="!isRefreshingOrders && filteredUserOrders.length === 0" class="text-center text-gray-500 mt-6">
           <i class="fa-solid fa-box-open text-4xl mb-3 text-gray-300"></i><p>尚無訂單紀錄</p>
         </div>
-        <div v-show="!isRefreshingOrders" class="space-y-4">
-          <div v-for="order in filteredUserOrders" :key="order.orderId" class="bg-white rounded-lg shadow p-4">
-            <div class="flex justify-between items-center border-b pb-2 mb-2">
-              <!-- ✅ 6. 訂單編號加大加粗 -->
-              <span class="text-sm font-bold text-gray-700 font-mono flex items-center">{{ order.orderId }} <i @click="copyText(order.orderId)" class="fa-regular fa-copy ml-2 text-gray-400 cursor-pointer hover:text-blue-500"></i></span>
+        <div v-show="!isRefreshingOrders" class="space-y-5">
+          <div v-for="(order, oIdx) in filteredUserOrders" :key="order.orderId"
+            class="rounded-xl overflow-hidden"
+            style="border: 2px solid #1f2937; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
+            <!-- ✅ 5. 訂單 header：流水號 + 淡色背景 -->
+            <div class="flex justify-between items-center px-4 py-2.5"
+              :style="'background:' + ['#eff6ff','#f0fdf4','#fefce8','#fdf4ff','#fff7ed','#f0f9ff','#fdf2f8'][oIdx % 7]">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-gray-500 bg-white bg-opacity-70 px-1.5 py-0.5 rounded font-mono">#{{ String(oIdx+1).padStart(3,'0') }}</span>
+                <span class="text-xs font-bold text-gray-700 font-mono flex items-center gap-1">{{ order.orderId }} <i @click="copyText(order.orderId)" class="fa-regular fa-copy text-gray-400 cursor-pointer hover:text-blue-500"></i></span>
+              </div>
               <span class="text-sm font-bold" :class="getStatusColor(order.status)">{{ order.status }}</span>
             </div>
+            <!-- 訂單內容 -->
+            <div class="bg-white p-4">
             <div v-if="order.trackingCode" class="mb-3 bg-gray-50 p-2 rounded text-xs border flex items-center cursor-pointer hover:bg-gray-100" @click="openTrackingModal(order.trackingCode)">
               <i class="fa-solid fa-truck-fast text-green-600 mr-2 text-lg"></i>
               <div class="flex-1">
@@ -451,7 +459,8 @@
                 <i class="fa-regular fa-copy mr-1"></i>複製單號
               </button>
             </div>
-          </div>
+            </div><!-- end order content -->
+          </div><!-- end order card outer -->
         </div>
       </div>
 
@@ -868,6 +877,24 @@
                 <div class="flex justify-between mb-2 border-b border-gray-200 pb-2"><span class="font-bold font-mono text-gray-600">#{{ order.orderId }}</span><span :class="getStatusColor(order.status)" class="font-bold">{{ order.status }}</span></div>
                 <p class="text-gray-800 font-bold mb-1"><i class="fa-solid fa-user w-4 text-gray-400"></i> {{ order.name }} <span class="font-normal text-xs text-gray-500">({{ order.phone }})</span></p>
                 <p class="text-[10px] text-gray-500 bg-white border p-1 rounded mt-1">{{ order.address }}</p>
+                <!-- ✅ 6. 商品明細可折疊 -->
+                <div class="mt-2 bg-gray-50 rounded border overflow-hidden">
+                  <div v-for="(item, iIdx) in (order._showAllItems ? order.items : order.items.slice(0,2))" :key="item.id"
+                    class="flex justify-between items-center px-2 py-1.5 border-b border-gray-100 last:border-0 text-xs">
+                    <div class="flex items-center gap-1.5 overflow-hidden">
+                      <span class="text-gray-400 font-mono">#{{ item.id }}</span>
+                      <span class="truncate text-gray-700 font-bold">{{ item.name }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0 ml-1">
+                      <span class="text-gray-500">x{{ item.quantity }}</span>
+                      <span class="font-bold text-red-600">${{ item.finalPrice * item.quantity }}</span>
+                    </div>
+                  </div>
+                  <button v-if="order.items.length > 2" @click="order._showAllItems = !order._showAllItems"
+                    class="w-full text-center text-[10px] text-blue-500 py-1 bg-blue-50 hover:bg-blue-100 font-bold">
+                    {{ order._showAllItems ? '▲ 收起' : '▼ 展開全部 ' + order.items.length + ' 件商品' }}
+                  </button>
+                </div>
                 <div v-if="order.paymentInfo" class="text-xs text-blue-700 mt-2 bg-blue-100 p-1.5 rounded shadow-inner font-mono">{{ order.paymentInfo }}</div>
                 <!-- ✅ 9. 管理員可輸入/修改物流單號 -->
                 <div class="mt-2 flex gap-1 items-center">
@@ -1237,7 +1264,16 @@
         <h3 class="font-bold text-lg mb-4 border-b pb-2 text-gray-800">通知版主已匯款</h3>
         <p class="text-sm mb-1 text-gray-600">訂單編號: <span class="font-mono font-bold">{{ selectedOrder?.orderId }}</span></p>
         <p class="text-sm mb-5 text-gray-600">應匯金額: <span class="text-red-600 font-bold text-lg ml-1">${{ selectedOrder?.totalAmount }}</span></p>
-        <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4 shadow-inner"><p class="text-xs font-bold text-blue-800 mb-1">賣家匯款帳號</p><p class="text-xs text-blue-700 whitespace-pre-line leading-relaxed font-mono">{{ adminSettings['銀行帳號'] }}</p></div>
+        <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4 shadow-inner">
+          <div class="flex justify-between items-center mb-1">
+            <p class="text-xs font-bold text-blue-800">賣家匯款帳號</p>
+            <!-- ✅ 1. 複製帳號按鈕 -->
+            <button @click="copyText(adminSettings['銀行帳號'])" class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold hover:bg-blue-200">
+              <i class="fa-regular fa-copy mr-0.5"></i>複製帳號
+            </button>
+          </div>
+          <p class="text-xs text-blue-700 whitespace-pre-line leading-relaxed font-mono">{{ adminSettings['銀行帳號'] }}</p>
+        </div>
         <div class="space-y-4">
           <div><label class="block text-xs text-gray-500 mb-1.5 font-bold">匯出帳號後五碼 <span class="text-red-500">*</span></label><input v-model="paymentForm.accountLast5" type="text" maxlength="5" placeholder="例如: 12345" class="w-full border rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none font-mono"></div>
           <div><label class="block text-xs text-gray-500 mb-1.5 font-bold">匯款日期 <span class="text-red-500">*</span></label><input v-model="paymentForm.date" type="date" class="w-full border rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"></div>
@@ -1516,7 +1552,7 @@
         const fontSizeIdx = ref(0);
         const fontSizeLabel = computed(() => fontSizeLabels[fontSizeIdx.value]);
         const showFontSlider = ref(false);
-        const fontScaleRaw = ref(100);
+        const fontScaleRaw = ref(120); // ✅ 4. 預設 120%
         const applyFontScale = () => {
           document.documentElement.style.setProperty('--font-scale', (fontScaleRaw.value / 100).toFixed(2));
         };
@@ -2348,10 +2384,10 @@
 
         const adminLoadData = async () => {
           const res = await callAPI('adminLoadData');
-          allOrders.value = (res.orders || []).map(o => ({ ...o, _trackingInput: o.trackingCode || '' }));
+          // ✅ 6. 加入 _showAllItems 供折疊展開，_trackingInput 供物流填寫
+          allOrders.value = (res.orders || []).map(o => ({ ...o, _trackingInput: o.trackingCode || '', _showAllItems: false }));
           adminStats.value = res.stats; adminMembers.value = res.members; systemLogs.value = res.logs;
           renderRecentChart(res.orders);
-          // ✅ 2. 管理員面板需要全部商品，確保背景載入已完成
           if (allProducts.value.length < 50) loadRemainingProducts();
         };
 
@@ -2472,25 +2508,38 @@
 
         const exportCSV = () => {
           try {
-            // ✅ 6. 改用 Blob 方式避免某些瀏覽器無反應
-            let csvRows = ['\uFEFF訂單編號,買家姓名,手機,收件地址,狀態,商品小計,總金額,下單時間'];
-            allOrders.value.forEach(o => {
+            // ✅ 6. 完整商品資訊 + 手機相容 Blob 下載
+            const header = '\uFEFF訂單編號,流水號,買家姓名,手機,收件地址,狀態,商品數量,商品明細,商品小計,總金額,折扣碼,折扣金額,物流單號,下單時間';
+            const rows = allOrders.value.map((o, idx) => {
+              const serial = '#' + String(idx + 1).padStart(3, '0');
               const addr = (o.address || '').replace(/,/g, '，');
               const name = (o.name || '').replace(/,/g, '，');
-              csvRows.push(`${o.orderId},${name},${o.phone},${addr},${o.status},${o.totalAmount},${o.totalAmount},${o.date || ''}`);
+              // 商品明細：每件 id|名稱|數量|金額
+              const itemDetail = (o.items || []).map(i => `${i.id}|${(i.name||'').replace(/,/g,'，')}|${i.quantity}件|$${i.finalPrice * i.quantity}`).join(' / ');
+              const itemSubtotal = (o.items || []).reduce((s, i) => s + (i.finalPrice * i.quantity), 0);
+              const itemCount = (o.items || []).length;
+              return [o.orderId, serial, name, o.phone || '', addr, o.status, itemCount, itemDetail, itemSubtotal, o.totalAmount, o.discountCode || '', o.discountAmt || 0, o.trackingCode || '', o.date || ''].join(',');
             });
-            const csvContent = csvRows.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `代購訂單_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            const csv = [header, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            // 手機相容：先嘗試 Blob URL，若失敗改用 data URI
+            try {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `訂單_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}`.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g,'') + '.csv';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
+            } catch(e2) {
+              // iOS Safari fallback
+              const reader = new FileReader();
+              reader.onload = () => { window.open(reader.result); };
+              reader.readAsDataURL(blob);
+            }
           } catch(e) {
-            showAlert('匯出失敗', '請嘗試在桌機瀏覽器操作匯出功能', 'error');
+            showAlert('匯出', '請嘗試在電腦瀏覽器操作匯出功能', 'info');
           }
         };
 
