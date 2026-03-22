@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>好事多會發生代購系統 V7.6</title>
+  <title>好事多會發生代購系統 V7.7</title>
   <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <!-- Tailwind CSS -->
@@ -88,7 +88,7 @@
       <div class="mb-8 text-center">
         <i class="fa-solid fa-cart-shopping text-5xl mb-4 drop-shadow-md"></i>
         <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">{{ adminSettings['商城名稱'] || '好事多會發生' }}</h1>
-        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.6</p>
+        <p class="text-sm font-light mt-1 opacity-90">商城系統 V7.7</p>
       </div>
       <div class="w-64 bg-blue-900 rounded-full h-3 mb-3 border border-blue-400 overflow-hidden shadow-inner">
         <div class="bg-white h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: loadingProgress + '%' }"></div>
@@ -107,7 +107,7 @@
       <!-- ✅ 3. 點標題重整，左邊加購物車圖示 -->
       <div @click="reloadPage" class="flex items-center gap-2 cursor-pointer select-none active:opacity-70 flex-1 min-w-0">
         <i class="fa-solid fa-cart-shopping text-lg flex-shrink-0" :class="isReloading ? 'fa-spin text-yellow-300' : 'text-white opacity-90'"></i>
-        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.6</span></h1>
+        <h1 class="text-lg font-bold truncate">{{ adminSettings['商城名稱'] || '好事多會發生' }} <span class="text-xs font-normal opacity-75 ml-1">V7.7</span></h1>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <button @click="showFontSlider = !showFontSlider" class="text-white opacity-80 hover:opacity-100 text-xs bg-white bg-opacity-20 px-2 py-1 rounded flex items-center gap-1" title="調整字體大小">
@@ -221,10 +221,36 @@
             <i class="fa-solid fa-external-link-alt"></i>
           </button>
         </div>
-        <div v-if="!searchQuery" class="text-center text-gray-500 mt-10">
+        <div v-if="!searchQuery" class="text-center text-gray-500 mt-6">
           <i class="fa-solid fa-magnifying-glass text-4xl mb-3 text-gray-300"></i>
-          <p>請輸入商品名稱或編號搜尋</p>
-          <p class="text-xs text-orange-500 mt-2"><i class="fa-solid fa-lightbulb mr-1"></i>點右上角橘色按鈕可前往好市多查詢商品編號</p>
+          <p class="mb-4">請輸入商品名稱或編號搜尋</p>
+          <!-- ✅ 2. 搜尋流程說明卡片 -->
+          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 mx-1 text-left shadow-sm">
+            <p class="text-xs font-bold text-blue-700 mb-3 flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-blue-500"></i>如何搜尋好市多商品？</p>
+            <div class="space-y-2.5">
+              <div class="flex items-start gap-2.5">
+                <div class="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</div>
+                <div>
+                  <p class="text-xs font-bold text-gray-700">直接搜尋商品名稱</p>
+                  <p class="text-[10px] text-gray-500 mt-0.5">在搜尋框輸入商品關鍵字（如「衛生紙」「橄欖油」），點放大鏡查詢</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <div class="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</div>
+                <div>
+                  <p class="text-xs font-bold text-gray-700">用商品編號精確搜尋</p>
+                  <p class="text-[10px] text-gray-500 mt-0.5">點右上角 <span class="bg-orange-500 text-white px-1 py-0.5 rounded text-[9px] font-bold">🔗</span> 橘色按鈕前往好市多官網，複製頁面網址中的六位數字編號</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</div>
+                <div>
+                  <p class="text-xs font-bold text-gray-700">找不到？直接從好市多新增！</p>
+                  <p class="text-[10px] text-gray-500 mt-0.5">輸入純數字編號後，若商城沒有此商品，點「嘗試從好市多雲端新增」，系統自動幫您加入商城並放入購物車</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div v-else-if="filteredProducts.length === 0" class="text-center mt-8">
           <p class="text-gray-500 mb-6">商城內暫時找不到符合「{{ searchQuery }}」的商品</p>
@@ -896,8 +922,9 @@
                     <div class="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
                       <img v-if="item.image" :src="item.image" class="w-6 h-6 object-cover rounded border flex-shrink-0">
                       <i v-else class="fa-solid fa-box text-gray-300 flex-shrink-0"></i>
-                      <span class="text-gray-400 font-mono flex-shrink-0">#{{ item.id }}</span>
-                      <span class="truncate text-gray-700 font-bold">{{ item.name }}</span>
+                      <span class="text-gray-400 font-mono text-[9px] flex-shrink-0">#{{ item.id }}</span>
+                      <!-- ✅ 1. 強制單行截斷，不超過指定寬度 -->
+                      <span class="text-gray-700 font-bold text-[10px] overflow-hidden whitespace-nowrap" style="max-width:120px; text-overflow:ellipsis; display:block;">{{ item.name }}</span>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0 ml-1">
                       <span class="text-gray-500 whitespace-nowrap">x{{ item.quantity }}</span>
@@ -1017,6 +1044,12 @@
             </div>
             <div class="border-t border-gray-100 pt-3 mt-3"><label class="block text-xs text-gray-500 mb-1 font-bold">爬蟲過濾最高金額</label><input v-model="adminSettings['過濾最高金額']" type="number" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
             <div><label class="block text-xs text-gray-500 mb-1 font-bold">爬蟲過濾關鍵字(逗號分隔)</label><input v-model="adminSettings['過濾關鍵字']" type="text" class="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white focus:ring-1 outline-none"></div>
+            <!-- ✅ 3. 首頁商品名稱過濾 -->
+            <div class="bg-red-50 border border-red-100 rounded p-3">
+              <label class="block text-xs text-red-700 mb-1 font-bold"><i class="fa-solid fa-eye-slash mr-1"></i>首頁隱藏關鍵字（逗號分隔）</label>
+              <input v-model="adminSettings['首頁過濾關鍵字']" type="text" placeholder="例：黃金,鑽石,白金" class="w-full border rounded p-2 text-sm bg-white focus:ring-1 outline-none">
+              <p class="text-[10px] text-red-400 mt-1">商品名稱包含以上文字，將不顯示在首頁商品列表（仍可在搜尋中找到）</p>
+            </div>
             <!-- ✅ 1. 處理費與退貨費設置 -->
             <div class="border-t border-gray-100 pt-3 mt-3 grid grid-cols-2 gap-3">
               <div class="bg-indigo-50 border border-indigo-100 rounded p-3">
@@ -1707,12 +1740,23 @@
         const lowStockThreshold = computed(() => parseInt(adminSettings.value['限量門檻']) || 5);
         const isLowStock = (p) => p.stock > 0 && p.stock <= lowStockThreshold.value;
 
+        // ✅ 3. 首頁過濾關鍵字
+        const homeFilterKeywords = computed(() => {
+          const raw = adminSettings.value['首頁過濾關鍵字'] || '';
+          return raw.split(',').map(w => w.trim()).filter(w => w.length > 0);
+        });
+        const isHomeFiltered = (p) => {
+          if (homeFilterKeywords.value.length === 0) return false;
+          return homeFilterKeywords.value.some(kw => p.name && p.name.includes(kw));
+        };
+
         const homeFilteredProducts = computed(() => {
-          let res = products.value.filter(p => !p.isDelisted);
-          if (selectedCategory.value === '❤️ 收藏') res = allProducts.value.filter(p => !p.isDelisted && favorites.value.includes(p.id));
-          else if (selectedCategory.value === '🔥 限量') res = allProducts.value.filter(p => !p.isDelisted && isLowStock(p));
-          // ✅ 2. 熱門分類：soldCount>=100 或 reviewsCount>=5 或 isHot
-          else if (selectedCategory.value === '🌟 熱門') res = allProducts.value.filter(p => !p.isDelisted && isPopular(p));
+          // ✅ 3. 先過濾掉下架和首頁隱藏關鍵字商品
+          const notFiltered = (p) => !p.isDelisted && !isHomeFiltered(p);
+          let res = products.value.filter(notFiltered);
+          if (selectedCategory.value === '❤️ 收藏') res = allProducts.value.filter(p => notFiltered(p) && favorites.value.includes(p.id));
+          else if (selectedCategory.value === '🔥 限量') res = allProducts.value.filter(p => notFiltered(p) && isLowStock(p));
+          else if (selectedCategory.value === '🌟 熱門') res = allProducts.value.filter(p => notFiltered(p) && isPopular(p));
           else if (selectedCategory.value !== '全部' && selectedCategory.value !== '') res = res.filter(p => p.categories.includes(selectedCategory.value));
           if (sortOrder.value === 'priceAsc') res = [...res].sort((a,b) => a.finalPrice - b.finalPrice);
           if (sortOrder.value === 'priceDesc') res = [...res].sort((a,b) => b.finalPrice - a.finalPrice);
@@ -2755,7 +2799,7 @@
           twCities, isPhoneVerified, phoneCountdown, sendPhoneCode, sentCode, phoneInputCode, isSavingProfile,
           allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, cartSavings, handlingFee, orders, orderFilter, filteredUserOrders,
           addonProducts, addonProductsDisplay, refreshAddonProducts, isRotatingAddon, browseHistory, browseHistoryProducts,
-          isLowStock, lowStockThreshold, isPopular,
+          isLowStock, lowStockThreshold, isPopular, homeFilterKeywords, isHomeFiltered,
           hasMoreProducts, displayedCount, isLoadingMore, loadMoreProducts,
           freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
           isGuest, guestBrowsing, showGuestPopup, enterAsGuest, handleNav, forceInitSpreadsheet, uploadCatIcon,
