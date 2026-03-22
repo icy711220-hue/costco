@@ -949,21 +949,32 @@
               </label>
             </div>
             <!-- 執行按鈕 -->
-            <button @click="runManualScan" :disabled="isBtnLoading.manualScan || scanSelectedCats.length === 0"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
-              <i v-if="isBtnLoading.manualScan" class="fa-solid fa-spinner fa-spin"></i>
-              <i v-else class="fa-solid fa-magnifying-glass-plus"></i>
-              {{ isBtnLoading.manualScan ? '掃描中，請耐心等候...' : '開始即時掃描（約1-3分鐘）' }}
-            </button>
+            <div class="flex gap-2">
+              <button @click="runManualScan" :disabled="isBtnLoading.manualScan || scanSelectedCats.length === 0"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
+                <i v-if="isBtnLoading.manualScan" class="fa-solid fa-spinner fa-spin"></i>
+                <i v-else class="fa-solid fa-magnifying-glass-plus"></i>
+                {{ isBtnLoading.manualScan ? '掃描中...' : '開始掃描' }}
+              </button>
+              <!-- ✅ 2. 繼續掃描按鈕（有未完成任務時顯示） -->
+              <button v-if="scanResult && scanResult.hasMore" @click="runContinueScan" :disabled="isBtnLoading.manualScan"
+                class="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
+                <i v-if="isBtnLoading.manualScan" class="fa-solid fa-spinner fa-spin"></i>
+                <i v-else class="fa-solid fa-forward"></i>
+                繼續（剩 {{ scanResult.remaining }} 件）
+              </button>
+            </div>
             <!-- 掃描結果 -->
-            <div v-if="scanResult" class="mt-3 bg-white border rounded-lg p-3">
-              <p class="text-xs font-bold" :class="scanResult.totalNew > 0 ? 'text-green-700' : 'text-gray-600'">
+            <div v-if="scanResult" class="mt-3 rounded-lg p-3 border"
+              :class="scanResult.hasMore ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'">
+              <p class="text-xs font-bold" :class="scanResult.hasMore ? 'text-orange-700' : (scanResult.totalNew > 0 ? 'text-green-700' : 'text-gray-600')">
                 {{ scanResult.message }}
               </p>
-              <div class="text-[10px] text-gray-500 mt-1 flex gap-3">
+              <div class="text-[10px] text-gray-500 mt-1 flex gap-3 flex-wrap">
                 <span>🆕 新增 {{ scanResult.totalNew }}</span>
                 <span>🚫 過濾 {{ scanResult.totalFilter }}</span>
                 <span>⏱ {{ scanResult.elapsed }}秒</span>
+                <span v-if="scanResult.hasMore" class="text-orange-600 font-bold">⏸ 剩餘 {{ scanResult.remaining }} 件</span>
               </div>
               <details v-if="scanResult.log" class="mt-2">
                 <summary class="text-[10px] text-blue-500 cursor-pointer">查看詳細 log</summary>
@@ -3328,10 +3339,19 @@
             admin: user.value.name
           });
           scanResult.value = res;
-          if (res.totalNew > 0) {
-            await adminLoadData();
-            await showAlert('掃描完成 🎉', res.message, 'success');
-          }
+          if (res.totalNew > 0) await adminLoadData();
+          if (!res.hasMore && res.totalNew > 0) await showAlert('掃描完成 🎉', res.message, 'success');
+        });
+
+        // ✅ 2. 繼續上次未完成的掃描
+        const runContinueScan = () => withBtnLock('manualScan', async () => {
+          const res = await callAPI('manualScanProducts', {
+            categories: scanSelectedCats.value,
+            admin: user.value.name
+          });
+          scanResult.value = { ...res, totalNew: (scanResult.value?.totalNew || 0) + res.totalNew };
+          if (res.totalNew > 0) await adminLoadData();
+          if (!res.hasMore) await showAlert('掃描全部完成 🎉', `總計新增 ${scanResult.value.totalNew} 件商品`, 'success');
         });
 
         const runDeduplication = async () => {
@@ -3415,7 +3435,7 @@
           showAdminMemberDetail, adminSelectedMember, adminMemberOrders, openAdminMemberDetail,
           // ✅ 4+5. 批量設定分類、去重
           batchSelectedIds, batchCategoryTarget, applyBatchCategory, batchListUnlist, runDeduplication,
-          scanCategoryOptions, scanSelectedCats, scanResult, runManualScan,
+          scanCategoryOptions, scanSelectedCats, scanResult, runManualScan, runContinueScan,
         };
       }
     });
