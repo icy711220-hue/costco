@@ -19,10 +19,14 @@
   <style>
     /* ✅ 字體縮放 CSS 變數 */
     :root { --font-scale: 1.2; }
-    /* ✅ 4. 讓縮放套用全頁面：html font-size 控制，所有 rem 單位跟著變 */
     html { font-size: calc(14px * var(--font-scale)); }
+    /* ✅ 1. 電腦版最大寬度居中，避免圖片過度拉伸 */
     body { background-color: #f3f4f6; padding-bottom: env(safe-area-inset-bottom, 70px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
-    .fs-scale { font-size: 1rem; }
+    #app { max-width: 600px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; }
+    header, nav { max-width: 600px; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; }
+    .fixed.bottom-0 { max-width: 600px; left: 50% !important; transform: translateX(-50%) !important; width: 100% !important; }
+    /* ✅ 1. 商品圖片固定正方形比例，電腦版不變形 */
+    .prod-img { aspect-ratio: 1; object-fit: cover; width: 100%; display: block; }
     [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -72,8 +76,17 @@
         <a href="https://lin.ee/xm6rIzB" class="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 rounded-lg font-bold shadow-lg flex items-center justify-center text-base mb-3">
           <i class="fa-solid fa-user-plus mr-2"></i>點我加入 LINE 官方帳號
         </a>
+        <!-- ✅ 2. 電腦版管理員用 LINE User ID 登入 -->
+        <div class="mt-3 border-t border-gray-100 pt-3">
+          <p class="text-xs text-gray-500 mb-2"><i class="fa-solid fa-desktop mr-1 text-gray-400"></i>電腦版管理員登入</p>
+          <div class="flex gap-2">
+            <input v-model="desktopLineId" type="text" placeholder="輸入您的 LINE User ID" class="flex-1 border rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-400 outline-none bg-gray-50">
+            <button @click="loginWithLineId" :disabled="!desktopLineId.trim()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 disabled:bg-gray-300">登入</button>
+          </div>
+          <p class="text-[10px] text-gray-400 mt-1">請在 LINE 中開啟商城，取得您的 User ID 後在此輸入</p>
+        </div>
         <!-- ✅ 訪客瀏覽按鈕 -->
-        <button @click="enterAsGuest" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-lg font-bold text-sm border border-gray-300">
+        <button @click="enterAsGuest" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-lg font-bold text-sm border border-gray-300 mt-3">
           <i class="fa-solid fa-eye mr-2 text-gray-400"></i>訪客瀏覽（僅可看商品，無法下單）
         </button>
       </div>
@@ -195,7 +208,7 @@
               <div v-if="isLowStock(product)" class="absolute bottom-1 right-1 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold shadow z-10">
                 <i class="fa-solid fa-fire-flame-curved mr-0.5"></i>剩{{ product.stock }}
               </div>
-              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" class="w-full h-24 object-cover" :class="{'opacity-50 grayscale':product.stock===0}">
+              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" style="aspect-ratio:1;object-fit:cover;" class="w-full" :class="{'opacity-50 grayscale':product.stock===0}">
               <div v-if="product.stock===0" class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center"><span class="text-white text-[10px] font-bold bg-black bg-opacity-60 px-2 py-0.5 rounded">已售完</span></div>
             </div>
             <div class="p-1.5 flex-1 flex flex-col">
@@ -283,7 +296,7 @@
             </button>
             <div class="relative cursor-pointer" :class="viewMode==='grid'?'w-full':'w-1/3'" @click="openProductDetail(product)">
               <div v-if="product.discount > 0" class="absolute top-1 left-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">省 ${{ product.discount }}</div>
-              <img :src="product.image||'https://placehold.co/150x150?text=No+Image'" class="w-full h-24 object-cover">
+              <img :src="product.image||'https://placehold.co/150x150?text=No+Image'" style="aspect-ratio:1;object-fit:cover;" class="w-full">
             </div>
             <div class="p-1.5 flex-1 flex flex-col">
               <h3 class="prod-name font-bold flex-1 cursor-pointer leading-tight text-gray-800 line-clamp-2" @click="openProductDetail(product)">{{ product.name }}</h3>
@@ -402,7 +415,7 @@
             <h3 class="font-bold border-b pb-2 mb-2 text-sm text-gray-700">訂單備註</h3>
             <textarea v-model="orderNotes" placeholder="有什麼想告訴賣家的嗎？" class="w-full border rounded p-2 text-sm h-16 resize-none focus:ring focus:ring-blue-100 outline-none"></textarea>
           </div>
-          <div class="fixed bottom-[60px] left-0 right-0 bg-white border-t p-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40">
+          <div class="fixed bottom-[60px] bg-white border-t p-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-40" style="left:50%;transform:translateX(-50%);width:100%;max-width:600px;">
             <div>
               <p class="text-[11px] text-gray-500 font-mono">小計: ${{ cartSubtotal }} | 運費: ${{ currentShippingFee }}<span v-if="handlingFee > 0" class="text-indigo-500"> | 處理費: ${{ handlingFee }}</span><span v-if="appliedDiscount" class="text-red-500"> | 折扣優惠</span></p>
               <p class="text-xl font-bold text-red-600">總額: ${{ cartTotal }}</p>
@@ -1267,33 +1280,65 @@
     </div>
 
     <!-- 商品詳情 Modal -->
-    <div v-if="showProductDetail" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-4 backdrop-blur-sm">
-      <div class="bg-white rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative">
-        <button @click="showProductDetail = false" class="absolute top-3 right-3 bg-black bg-opacity-40 text-white w-8 h-8 rounded-full z-10 hover:bg-opacity-60"><i class="fa-solid fa-xmark"></i></button>
-        <div class="relative h-56 bg-white flex-shrink-0 cursor-pointer border-b" @click="openLightbox(selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image)">
-          <img :src="selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image" class="w-full h-full object-contain p-4">
-          <!-- ✅ 2. 版權聲明 -->
-          <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-20 text-center py-0.5">
-            <p class="text-[9px] text-white opacity-80">※ 商品內容均擷自好市多官方網站資訊 ※</p>
+    <div v-if="showProductDetail" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-2 sm:p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-xl w-full shadow-2xl flex flex-col overflow-hidden relative" style="max-width:760px; max-height:92vh;">
+        <button @click="showProductDetail = false" class="absolute top-3 right-3 bg-black bg-opacity-40 text-white w-8 h-8 rounded-full z-20 hover:bg-opacity-60 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
+
+        <!-- ✅ 3. 上方區：左圖右文（電腦橫排，手機縱排） -->
+        <div class="flex flex-col sm:flex-row flex-shrink-0 border-b border-gray-100">
+          <!-- 左：商品圖片 -->
+          <div class="relative sm:w-56 sm:flex-shrink-0 bg-white cursor-pointer"
+            @click="openLightbox(selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image)">
+            <img :src="selectedProduct?.images?selectedProduct.images[0]:selectedProduct?.image"
+              class="w-full object-contain bg-white"
+              style="height:200px; sm:height:260px;">
+            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-20 text-center py-0.5">
+              <p class="text-[8px] text-white opacity-80">※ 擷自好市多官方網站 ※</p>
+            </div>
+          </div>
+          <!-- 右：商品資訊 -->
+          <div class="flex-1 p-4 flex flex-col justify-between min-w-0">
+            <div>
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <h3 class="font-bold text-base leading-tight text-gray-800 flex-1">{{ selectedProduct?.name }}</h3>
+                <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0">#{{ selectedProduct?.id }}</span>
+              </div>
+              <div class="flex gap-1 mb-2 flex-wrap">
+                <span v-for="cat in selectedProduct?.categories" :key="cat" class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ cat }}</span>
+              </div>
+              <div class="flex items-center mb-2" v-if="selectedProduct?.reviewsCount > 0">
+                <i class="fa-solid fa-star text-yellow-400 text-xs mr-1"></i>
+                <span class="text-xs text-gray-500 font-bold">{{ selectedProduct?.rating }}</span>
+                <span class="text-xs text-gray-400 ml-1">({{ selectedProduct?.reviewsCount }}則評價)</span>
+              </div>
+              <div class="flex items-baseline gap-2 mb-3">
+                <p class="text-red-600 font-bold text-2xl">${{ selectedProduct?.finalPrice }}</p>
+                <p v-if="selectedProduct?.discount > 0" class="text-sm text-gray-400 line-through">原價 ${{ selectedProduct?.originalPrice }}</p>
+                <span v-if="selectedProduct?.discount > 0" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">省 ${{ selectedProduct?.discount }}</span>
+              </div>
+              <!-- 庫存狀態 -->
+              <div v-if="selectedProduct?.stock > 0 && isLowStock(selectedProduct)" class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2 inline-block">
+                <i class="fa-solid fa-fire-flame-curved mr-1"></i>僅剩 {{ selectedProduct?.stock }} 件
+              </div>
+            </div>
+            <!-- 加購按鈕（電腦版在右側顯示） -->
+            <div class="hidden sm:flex gap-2 mt-2">
+              <button v-if="selectedProduct?.isDelisted" class="flex-1 bg-gray-300 text-gray-500 py-2.5 rounded-lg font-bold cursor-not-allowed text-sm">已下架</button>
+              <button v-else-if="selectedProduct?.stock === 0" class="flex-1 bg-gray-300 text-gray-500 py-2.5 rounded-lg font-bold cursor-not-allowed text-sm">目前缺貨</button>
+              <button v-else-if="selectedProduct?.finalPrice >= reviewThreshold" @click="requestApproval(selectedProduct);showProductDetail=false" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>申請報價</button>
+              <button v-else @click="addToCart(selectedProduct);showProductDetail=false" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-cart-plus mr-1"></i>加入購物車</button>
+              <button @click="shareProduct(selectedProduct)" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-share-nodes"></i></button>
+            </div>
           </div>
         </div>
-        <div class="p-4 flex-shrink-0 bg-white">
-          <!-- ✅ 2. 商品名稱 + 商品編號 -->
-          <div class="flex items-start justify-between gap-2">
-            <h3 class="font-bold text-lg leading-tight text-gray-800 flex-1">{{ selectedProduct?.name }}</h3>
-            <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 mt-1">#{{ selectedProduct?.id }}</span>
-          </div>
-          <div class="flex gap-1 mt-1 flex-wrap"><span v-for="cat in selectedProduct?.categories" class="text-[10px] bg-gray-100 text-gray-600 px-1.5 rounded">{{ cat }}</span></div>
-          <div class="flex items-center mt-1" v-if="selectedProduct?.reviewsCount > 0"><i class="fa-solid fa-star text-yellow-400 text-xs"></i><span class="text-xs text-gray-500 ml-1 font-bold">{{ selectedProduct?.rating }} <span class="font-normal">({{ selectedProduct?.reviewsCount }}則評價)</span></span></div>
-          <div class="mt-2 flex items-baseline gap-2"><p class="text-red-600 font-bold text-2xl">${{ selectedProduct?.finalPrice }}</p><p v-if="selectedProduct?.discount > 0" class="text-sm text-gray-400 line-through">原價 ${{ selectedProduct?.originalPrice }}</p></div>
-        </div>
+
+        <!-- 標籤列 + 字體滑桿 -->
         <div class="flex border-b border-gray-200 flex-shrink-0 bg-gray-50">
-          <button @click="detailTab='desc'" :class="detailTab==='desc'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-3 text-[13px]">商品介紹</button>
-          <button @click="detailTab='specs'" :class="detailTab==='specs'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-3 text-[13px]">規格與配送</button>
-          <button @click="detailTab='reviews'" :class="detailTab==='reviews'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-3 text-[13px]">買家評價</button>
+          <button @click="detailTab='desc'" :class="detailTab==='desc'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-2.5 text-xs sm:text-sm">商品介紹</button>
+          <button @click="detailTab='specs'" :class="detailTab==='specs'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-2.5 text-xs sm:text-sm">規格與配送</button>
+          <button @click="detailTab='reviews'" :class="detailTab==='reviews'?'text-blue-600 border-b-2 border-blue-600 font-bold bg-white':'text-gray-500'" class="flex-1 py-2.5 text-xs sm:text-sm">買家評價</button>
         </div>
-        <!-- ✅ 4. 商品詳情字體改為藍色滑動條 -->
-        <div class="flex items-center justify-between px-3 py-2 bg-blue-600 border-b border-blue-700 flex-shrink-0">
+        <div class="flex items-center justify-between px-3 py-1.5 bg-blue-600 border-b border-blue-700 flex-shrink-0">
           <div class="flex items-center gap-2 flex-1">
             <i class="fa-solid fa-text-height text-white text-xs opacity-80"></i>
             <input type="range" v-model="detailFontScaleRaw" min="90" max="160" step="5"
@@ -1301,15 +1346,23 @@
               class="flex-1 h-1.5 accent-white cursor-pointer">
             <span class="text-white text-[10px] font-bold w-8 text-right opacity-90">{{ detailFontScaleRaw }}%</span>
           </div>
-          <button @click="shareProduct(selectedProduct)" class="flex items-center gap-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 text-white text-[11px] px-3 py-1 rounded-full font-bold ml-3 flex-shrink-0">
+          <button @click="shareProduct(selectedProduct)" class="sm:hidden flex items-center gap-1.5 bg-white bg-opacity-20 hover:bg-opacity-30 text-white text-[11px] px-3 py-1 rounded-full font-bold ml-3 flex-shrink-0">
             <i class="fa-solid fa-share-nodes"></i> 分享
           </button>
         </div>
-        <div class="p-4 overflow-y-auto flex-1 text-gray-700 bg-white" :style="'font-size:'+detailFontSize+'px; line-height:1.7'">
+
+        <!-- ✅ 3. 內容區：更高，overflow scroll -->
+        <div class="p-4 overflow-y-auto flex-1 text-gray-700 bg-white" :style="'font-size:'+detailFontSize+'px; line-height:1.7; min-height:180px;'">
           <div v-show="detailTab==='desc'" class="costco-html"><p v-html="selectedProduct?.description||'目前無詳細介紹。'"></p></div>
           <div v-show="detailTab==='specs'">
-            <div v-if="selectedProduct?.specs && Object.keys(selectedProduct.specs).length > 0"><table class="w-full text-left border-collapse mb-4" :style="'font-size:'+detailFontSize+'px'"><tbody><tr v-for="(value,key) in selectedProduct.specs" :key="key" class="border-b border-gray-100 hover:bg-gray-50"><th class="py-2.5 pr-2 text-gray-500 font-normal w-1/3 align-top">{{ key }}</th><td class="py-2.5 align-top break-words text-gray-800">{{ value }}</td></tr></tbody></table></div>
-            <!-- ✅ 2. 配送說明改為從系統設置讀取 -->
+            <div v-if="selectedProduct?.specs && Object.keys(selectedProduct.specs).length > 0">
+              <table class="w-full text-left border-collapse mb-4" :style="'font-size:'+detailFontSize+'px'">
+                <tbody><tr v-for="(value,key) in selectedProduct.specs" :key="key" class="border-b border-gray-100 hover:bg-gray-50">
+                  <th class="py-2.5 pr-2 text-gray-500 font-normal w-1/3 align-top">{{ key }}</th>
+                  <td class="py-2.5 align-top break-words text-gray-800">{{ value }}</td>
+                </tr></tbody>
+              </table>
+            </div>
             <div class="leading-relaxed text-gray-600 costco-html border-t pt-3 border-dashed border-gray-200">
               <div v-if="selectedProduct?.shipping" v-html="selectedProduct.shipping"></div>
               <div v-else>
@@ -1319,13 +1372,23 @@
             </div>
           </div>
           <div v-show="detailTab==='reviews'">
-            <div v-if="selectedProduct?.reviews?.length > 0" class="space-y-3"><div v-for="(rev,idx) in selectedProduct.reviews" :key="idx" class="border-b border-gray-100 pb-3"><div class="flex justify-between items-center mb-1"><span class="font-bold text-gray-800 text-xs">{{ rev.name ? rev.name.charAt(0) + '**' : '匿名' }}</span><span class="text-gray-400 text-[10px] font-mono">{{ rev.time }}</span></div><div class="text-yellow-400 text-[10px] mb-1.5"><i class="fa-solid fa-star" v-for="n in rev.rating" :key="n"></i></div><p class="text-xs text-gray-600 leading-relaxed">{{ rev.comment }}</p></div></div>
+            <div v-if="selectedProduct?.reviews?.length > 0" class="space-y-3">
+              <div v-for="(rev,idx) in selectedProduct.reviews" :key="idx" class="border-b border-gray-100 pb-3">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="font-bold text-gray-800 text-xs">{{ rev.name ? rev.name.charAt(0) + '**' : '匿名' }}</span>
+                  <span class="text-gray-400 text-[10px] font-mono">{{ rev.time }}</span>
+                </div>
+                <div class="text-yellow-400 text-[10px] mb-1.5"><i class="fa-solid fa-star" v-for="n in rev.rating" :key="n"></i></div>
+                <p class="text-xs text-gray-600 leading-relaxed">{{ rev.comment }}</p>
+              </div>
+            </div>
             <div v-else class="text-center py-6 text-gray-400"><i class="fa-regular fa-comment-dots text-3xl mb-2 block text-gray-200"></i>尚無評價</div>
           </div>
         </div>
-        <div class="p-3 border-t flex gap-2 flex-shrink-0 bg-white">
+
+        <!-- 手機版底部按鈕 -->
+        <div class="sm:hidden p-3 border-t flex gap-2 flex-shrink-0 bg-white">
           <button v-if="selectedProduct?.isDelisted" class="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-base cursor-not-allowed">商品已下架</button>
-          <!-- ✅ 1. 缺貨商品不可加入購物車 -->
           <button v-else-if="selectedProduct?.stock === 0" class="flex-1 bg-gray-300 text-gray-500 py-3 rounded-lg font-bold text-base cursor-not-allowed"><i class="fa-solid fa-ban mr-1"></i>此商品目前缺貨中</button>
           <button v-else-if="selectedProduct?.finalPrice >= reviewThreshold" @click="requestApproval(selectedProduct);showProductDetail=false" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-bold shadow-md text-base"><i class="fa-solid fa-magnifying-glass-dollar mr-2"></i>申請代購報價</button>
           <button v-else @click="addToCart(selectedProduct);showProductDetail=false" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md text-base">加入購物車</button>
@@ -2037,6 +2100,17 @@
         const enterAsGuest = () => {
           guestBrowsing.value = true;
           showGuestPopup.value = false;
+        };
+
+        // ✅ 2. 電腦版以 LINE User ID 登入
+        const desktopLineId = ref('');
+        const loginWithLineId = async () => {
+          const lid = desktopLineId.value.trim();
+          if (!lid) return;
+          isGuest.value = false;
+          showGuestPopup.value = false;
+          liffProfile.value = { userId: lid, displayName: '電腦版用戶', pictureUrl: '', email: '' };
+          loadData();
         };
 
         const handleNav = (tab) => {
@@ -2952,7 +3026,7 @@
           isLowStock, lowStockThreshold, isPopular, homeFilterKeywords, isHomeFiltered,
           hasMoreProducts, displayedCount, isLoadingMore, loadMoreProducts,
           freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
-          isGuest, guestBrowsing, showGuestPopup, enterAsGuest, handleNav, forceInitSpreadsheet, uploadCatIcon,
+          isGuest, guestBrowsing, showGuestPopup, enterAsGuest, desktopLineId, loginWithLineId, handleNav, forceInitSpreadsheet, uploadCatIcon,
           searchQuery, searchHistory, filteredProducts, saveSearchHistory, tryFetchFromCostco, isFetching,
           discountInput, appliedDiscount, availableDiscountCodes, applyDiscount,
           showProductDetail, selectedProduct, detailTab, openProductDetail, tryOpenHistoryProduct, openLightbox, lightboxImage, shareProduct, shareShop,
