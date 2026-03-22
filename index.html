@@ -57,6 +57,9 @@
     /* ✅ 5. 商品圖片：提升亮度與飽和度，讓圖片更鮮豔明亮 */
     .prod-img-filter { filter: brightness(1.06) saturate(1.18) contrast(1.04); transition: filter 0.2s; }
     .prod-img-filter:hover { filter: brightness(1.12) saturate(1.28) contrast(1.06); }
+    /* ✅ 4. 售完商品：grayscale + 降低飽和度，不能讓 prod-img-filter 覆蓋 grayscale */
+    .prod-img-filter.is-soldout { filter: grayscale(1) brightness(0.85) !important; }
+    .prod-img-filter.is-soldout:hover { filter: grayscale(1) brightness(0.85) !important; }
     /* ✅ 4. 電腦版商品格更多欄位 */
     @media (min-width: 900px) {
       .desktop-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
@@ -259,7 +262,7 @@
               <div v-if="isLowStock(product)" class="absolute bottom-1 right-1 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold shadow z-10">
                 <i class="fa-solid fa-fire-flame-curved mr-0.5"></i>剩{{ product.stock }}
               </div>
-              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" style="aspect-ratio:1;object-fit:cover;" class="w-full prod-img-filter" :class="{'opacity-50 grayscale':product.stock===0}">
+              <img :src="product.images&&product.images.length>0?product.images[product.currentImgIdx||0]:(product.image||'https://placehold.co/150x150?text=No+Image')" style="aspect-ratio:1;object-fit:cover;" class="w-full prod-img-filter" :class="{'opacity-60 is-soldout':product.stock===0}">
               <div v-if="product.stock===0" class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center"><span class="text-white text-[10px] font-bold bg-black bg-opacity-60 px-2 py-0.5 rounded">已售完</span></div>
             </div>
             <div class="p-1.5 flex-1 flex flex-col">
@@ -938,6 +941,18 @@
           </form>
           <h3 class="font-bold mb-2"><i class="fa-solid fa-pen-to-square mr-2 text-purple-500"></i>現有商品編輯</h3>
           <div class="mb-3 relative"><input v-model="adminProductSearch" type="text" placeholder="搜尋名稱或編號..." class="w-full border rounded p-2 text-sm pr-8"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i></div>
+          <!-- ✅ 3. 全選/取消全選 -->
+          <div class="flex items-center gap-2 px-2 py-1.5 mb-1 bg-gray-100 rounded text-xs font-bold text-gray-600">
+            <input type="checkbox"
+              :checked="adminFilteredProducts.length > 0 && batchSelectedIds.length === adminFilteredProducts.length"
+              :indeterminate.prop="batchSelectedIds.length > 0 && batchSelectedIds.length < adminFilteredProducts.length"
+              @change="batchSelectedIds = batchSelectedIds.length === adminFilteredProducts.length ? [] : adminFilteredProducts.map(p=>p.id)"
+              class="w-4 h-4 text-purple-600 rounded cursor-pointer">
+            <span class="cursor-pointer" @click="batchSelectedIds = batchSelectedIds.length === adminFilteredProducts.length ? [] : adminFilteredProducts.map(p=>p.id)">
+              {{ batchSelectedIds.length === adminFilteredProducts.length && adminFilteredProducts.length > 0 ? '取消全選' : '全選' }}
+              <span class="text-gray-400 font-normal ml-1">({{ adminFilteredProducts.length }} 件)</span>
+            </span>
+          </div>
           <div class="max-h-64 overflow-y-auto space-y-2 pr-1 hide-scrollbar">
             <div v-for="p in adminFilteredProducts" :key="p.id" class="border p-2 rounded flex items-center gap-3 bg-gray-50">
               <!-- ✅ 4. 批量選擇 checkbox -->
@@ -1541,11 +1556,14 @@
           <div v-show="detailTab==='specs'">
             <div v-if="selectedProduct?.specs && Object.keys(selectedProduct.specs).length > 0">
               <table class="w-full text-left border-collapse mb-4" :style="'font-size:'+detailFontSize+'px'">
-                <tbody><tr v-for="(value,key) in selectedProduct.specs" :key="key" class="border-b border-gray-100 hover:bg-gray-50">
-                  <th class="py-2.5 pr-3 text-gray-500 font-normal align-top whitespace-nowrap" style="width:30%">{{ key }}</th>
-                  <!-- ✅ 2. 用 v-html 渲染值，讓 <p></p> 正確顯示，純文字也安全 -->
-                  <td class="py-2.5 align-top break-words text-gray-800" v-html="value"></td>
-                </tr></tbody>
+                <tbody>
+                  <tr v-for="(value,key,specIdx) in selectedProduct.specs" :key="key"
+                    class="border-b border-gray-100 hover:opacity-90"
+                    :style="'background:hsl('+(200 + specIdx*18)+',70%,96%)'">
+                    <th class="py-2.5 pr-3 font-normal align-top whitespace-nowrap" style="width:30%;color:#475569">{{ key }}</th>
+                    <td class="py-2.5 align-top break-words text-gray-800" v-html="value"></td>
+                  </tr>
+                </tbody>
               </table>
             </div>
             <div class="leading-relaxed text-gray-600 costco-html border-t pt-3 border-dashed border-gray-200">
@@ -2128,14 +2146,16 @@
         const lowStockThreshold = computed(() => parseInt(adminSettings.value['限量門檻']) || 5);
         const isLowStock = (p) => p.stock > 0 && p.stock <= lowStockThreshold.value;
 
-        // ✅ 3. 首頁過濾關鍵字
+        // ✅ 2. 首頁過濾關鍵字（從管理後台設定讀取，儲存後立即生效）
         const homeFilterKeywords = computed(() => {
-          const raw = adminSettings.value['首頁過濾關鍵字'] || '';
+          const raw = (adminSettings.value['首頁過濾關鍵字'] || '').toString();
+          if (!raw.trim()) return [];
           return raw.split(',').map(w => w.trim()).filter(w => w.length > 0);
         });
         const isHomeFiltered = (p) => {
-          if (homeFilterKeywords.value.length === 0) return false;
-          return homeFilterKeywords.value.some(kw => p.name && p.name.includes(kw));
+          const kws = homeFilterKeywords.value;
+          if (kws.length === 0 || !p || !p.name) return false;
+          return kws.some(kw => kw && p.name.includes(kw));
         };
 
         const homeFilteredProducts = computed(() => {
