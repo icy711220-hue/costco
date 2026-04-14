@@ -3,6 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- ============================================================
+    🔐 部署設定區：請填入你自己的值（此區塊勿上傳至公開 GitHub）
+    建議做法：使用 Vercel 環境變數注入，或在本地 .env 管理
+  ============================================================ -->
+  <script>
+    window.__GAS_API_URL__ = ''; // ← 填入你的 GAS Web App URL (/exec)
+    window.__LIFF_ID__     = ''; // ← 填入你的 LIFF ID
+  </script>
+  <!-- ============================================================ -->
   <title>好事多會發生代購系統 V8.0</title>
   <!-- Vue 3 - 固定版本，使用 jsDelivr 確保穩定 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
@@ -254,11 +263,18 @@
               <i :class="isFavorite(product.id)?'fa-solid fa-heart text-red-500':'fa-regular fa-heart text-gray-400'"></i>
             </button>
             <div class="relative cursor-pointer" :class="viewMode==='grid'?'w-full':'w-1/3'" @click="openProductDetail(product)">
-              <div v-if="product.discount > 0" class="absolute top-1 left-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">省 ${{ product.discount }}</div>
-              <div v-if="product.isCustom" class="absolute top-1 left-1 bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">獨家</div>
+              <!-- 促銷倒數標籤（優先顯示） -->
+              <div v-if="product.isPromoActive" class="absolute top-1 left-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left flex items-center gap-0.5">
+                <i class="fa-solid fa-bolt"></i>限時特價
+              </div>
+              <div v-else-if="product.isCustom" class="absolute top-1 left-1 bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">獨家</div>
               <div v-else-if="product.discount > 0" class="absolute top-1 left-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">省 ${{ product.discount }}</div>
               <div v-else-if="product.isNew" class="absolute top-1 left-1 bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm font-bold shadow z-10 scale-90 origin-top-left">NEW</div>
-              <!-- ✅ 5. 限量標籤移到圖片右下角 -->
+              <!-- 促銷倒數計時（右上角） -->
+              <div v-if="product.isPromoActive && product.promoEnd" class="absolute top-1 right-1 bg-black bg-opacity-65 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold z-10">
+                {{ getCountdown(product.promoEnd) }}
+              </div>
+              <!-- 限量標籤 -->
               <div v-if="isLowStock(product)" class="absolute bottom-1 right-1 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold shadow z-10">
                 <i class="fa-solid fa-fire-flame-curved mr-0.5"></i>剩{{ product.stock }}
               </div>
@@ -273,11 +289,16 @@
               <div class="flex justify-between items-end mt-1 flex-1">
                 <div>
                   <p v-if="product.originalPrice > product.finalPrice" class="text-[9px] text-gray-400 line-through">${{ product.originalPrice }}</p>
-                  <p class="prod-price text-red-600 font-bold">${{ product.finalPrice }}</p>
+                  <p class="prod-price text-red-600 font-bold" :class="{'text-orange-500':product.isPromoActive}">${{ product.finalPrice }}</p>
+                  <!-- 促銷說明文字 -->
+                  <p v-if="product.isPromoActive && product.promoPrice" class="text-[9px] text-orange-500">原售 ${{ product.originalPrice }}</p>
                 </div>
               </div>
               <button v-if="product.finalPrice >= reviewThreshold" @click="requestApproval(product)" class="mt-1.5 w-full bg-yellow-500 text-white text-[11px] py-1 rounded font-bold shadow-sm"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>申請代購報價</button>
-              <button v-else @click="addToCart(product)" class="mt-1.5 w-full bg-blue-600 text-white text-[11px] py-1 rounded font-bold shadow-sm">加購物車</button>
+              <button v-else @click="addToCart(product)" class="mt-1.5 w-full font-bold shadow-sm text-[11px] py-1 rounded"
+                :class="product.isPromoActive ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-blue-600 text-white'">
+                <i v-if="product.isPromoActive" class="fa-solid fa-bolt mr-1"></i>{{ product.isPromoActive ? '搶購特價' : '加購物車' }}
+              </button>
             </div>
           </div>
         </div>
@@ -984,6 +1005,42 @@
             </div>
           </div>
 
+          <!-- ✅ 商品比對同步 -->
+          <div class="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-4">
+            <h3 class="font-bold text-teal-800 mb-1 flex items-center gap-2">
+              <i class="fa-solid fa-arrows-rotate text-teal-500"></i>與好市多官網比對同步
+            </h3>
+            <p class="text-[11px] text-teal-600 mb-3">比對試算表所有商品，自動更新價格、清除過期促銷、下架已失效商品</p>
+            <div class="flex gap-2">
+              <button @click="runManualSync" :disabled="isBtnLoading.manualSync"
+                class="flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-lg font-bold text-sm shadow disabled:opacity-50 flex items-center justify-center gap-2">
+                <i v-if="isBtnLoading.manualSync" class="fa-solid fa-spinner fa-spin"></i>
+                <i v-else class="fa-solid fa-arrows-rotate"></i>
+                {{ isBtnLoading.manualSync ? '比對同步中...' : '立即比對同步' }}
+              </button>
+              <button v-if="isBtnLoading.manualSync" @click="cancelManualSync"
+                class="bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 px-4 py-2.5 rounded-lg font-bold text-sm">
+                <i class="fa-solid fa-stop mr-1"></i>取消
+              </button>
+            </div>
+            <div v-if="syncResult" class="mt-3 rounded-lg p-3 border"
+              :class="syncResult.status==='done' ? 'bg-green-50 border-green-200' : 'bg-teal-50 border-teal-200'">
+              <div class="flex items-center gap-2">
+                <i v-if="syncResult.status==='running'" class="fa-solid fa-spinner fa-spin text-teal-500 text-sm"></i>
+                <i v-else-if="syncResult.status==='done'" class="fa-solid fa-check-circle text-green-500 text-sm"></i>
+                <p class="text-xs font-bold flex-1" :class="syncResult.status==='done'?'text-green-700':'text-teal-700'">
+                  {{ syncResult.log || '比對同步進行中...' }}
+                </p>
+              </div>
+              <div v-if="syncResult.status==='done'" class="text-[10px] text-gray-500 mt-1.5 flex gap-3 flex-wrap">
+                <span>💰 價格更新 {{ syncResult.updated }}</span>
+                <span>📴 下架 {{ syncResult.delisted }}</span>
+                <span>🏷️ 促銷清除 {{ syncResult.promoCleared }}</span>
+                <span v-if="syncResult.remaining > 0">⏳ 剩餘 {{ syncResult.remaining }}</span>
+              </div>
+            </div>
+          </div>
+
           <h3 class="font-bold mb-3"><i class="fa-solid fa-plus-circle mr-2 text-purple-500"></i>上架自訂商品 / 餐券</h3>
           <form @submit.prevent="submitCustomProduct" class="space-y-3 border-b pb-4 mb-4">
             <div><label class="block text-xs text-gray-500 mb-1">商品名稱</label><input v-model="customProdForm.name" required type="text" class="w-full border rounded p-2 text-sm bg-gray-50"></div>
@@ -1391,7 +1448,40 @@
             <div class="flex-1"><label class="block text-xs text-gray-500 mb-1 font-bold">售價</label><input v-model="editProdForm.finalPrice" type="number" class="w-full border rounded p-2 text-sm bg-gray-50"></div>
           </div>
           <div><label class="block text-xs text-gray-500 mb-1 font-bold">所屬分類 (逗號分隔)</label><input v-model="editProdForm.categoriesStr" type="text" class="w-full border rounded p-2 text-sm bg-gray-50"></div>
-          <div class="pt-2"><label class="flex items-center cursor-pointer bg-gray-50 p-3 rounded border"><input type="checkbox" v-model="editProdForm.isDelisted" class="w-4 h-4 text-red-600 rounded"><span class="ml-2 text-sm font-bold text-red-600">此商品已下架 / 停售</span></label></div>
+
+          <!-- ✅ 促銷時段設定區塊 -->
+          <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-bold text-orange-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt"></i>限時促銷設定
+              </p>
+              <!-- 目前促銷狀態 -->
+              <span v-if="editProdForm.isPromoActive" class="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-bold">進行中</span>
+              <span v-else-if="editProdForm.isPromoScheduled" class="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold">已排程</span>
+              <span v-else-if="editProdForm.promoEndDt" class="text-[10px] bg-gray-400 text-white px-2 py-0.5 rounded-full font-bold">已結束</span>
+            </div>
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <label class="block text-[10px] text-orange-600 mb-1 font-bold">開始時間（空白=立即）</label>
+                <input v-model="editProdForm.promoStartDt" type="datetime-local" class="w-full border border-orange-200 rounded p-1.5 text-xs bg-white focus:ring-1 focus:ring-orange-400 outline-none">
+              </div>
+              <div class="flex-1">
+                <label class="block text-[10px] text-orange-600 mb-1 font-bold">結束時間 <span class="text-red-500">*</span></label>
+                <input v-model="editProdForm.promoEndDt" type="datetime-local" class="w-full border border-orange-200 rounded p-1.5 text-xs bg-white focus:ring-1 focus:ring-orange-400 outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] text-orange-600 mb-1 font-bold">促銷特價 $（空白=沿用現有售價）</label>
+              <input v-model="editProdForm.promoPrice" type="number" placeholder="例：399" class="w-full border border-orange-200 rounded p-1.5 text-sm bg-white focus:ring-1 focus:ring-orange-400 outline-none">
+            </div>
+            <p class="text-[10px] text-orange-500">促銷期間商品卡自動顯示倒數計時，加購按鈕變為橘色「搶購特價」</p>
+            <button v-if="editProdForm.promoEndDt" @click="adminClearPromo"
+              class="w-full text-xs text-orange-600 border border-orange-300 py-1.5 rounded-lg hover:bg-orange-100 font-bold">
+              <i class="fa-solid fa-trash mr-1"></i>清除此商品促銷設定
+            </button>
+          </div>
+
+          <div class="pt-1"><label class="flex items-center cursor-pointer bg-gray-50 p-3 rounded border"><input type="checkbox" v-model="editProdForm.isDelisted" class="w-4 h-4 text-red-600 rounded"><span class="ml-2 text-sm font-bold text-red-600">此商品已下架 / 停售</span></label></div>
         </div>
         <div class="flex gap-3 mt-4 pt-3 border-t">
           <button @click="showAdminProductEditor = false" class="flex-1 bg-gray-100 py-2.5 rounded-lg font-bold text-gray-600">取消</button>
@@ -1549,9 +1639,27 @@
                 <span class="text-xs text-gray-400 ml-1">({{ selectedProduct?.reviewsCount }}則評價)</span>
               </div>
               <div class="flex items-baseline gap-2 mb-3">
-                <p class="text-red-600 font-bold text-2xl">${{ selectedProduct?.finalPrice }}</p>
+                <p class="font-bold text-2xl" :class="selectedProduct?.isPromoActive ? 'text-orange-500' : 'text-red-600'">${{ selectedProduct?.finalPrice }}</p>
                 <p v-if="selectedProduct?.discount > 0" class="text-sm text-gray-400 line-through">原價 ${{ selectedProduct?.originalPrice }}</p>
                 <span v-if="selectedProduct?.discount > 0" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">省 ${{ selectedProduct?.discount }}</span>
+              </div>
+              <!-- 促銷倒數計時橫幅 -->
+              <div v-if="selectedProduct?.isPromoActive && selectedProduct?.promoEnd"
+                class="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg px-3 py-2 mb-2">
+                <i class="fa-solid fa-bolt text-orange-500 text-sm animate-pulse"></i>
+                <div class="flex-1">
+                  <p class="text-[10px] text-orange-600 font-bold">限時特價倒數</p>
+                  <p class="text-orange-700 font-mono font-bold text-sm">{{ getCountdown(selectedProduct.promoEnd) }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[9px] text-gray-400">促銷結束恢復原價</p>
+                </div>
+              </div>
+              <!-- 已排程尚未開始 -->
+              <div v-else-if="selectedProduct?.isPromoScheduled && selectedProduct?.promoStart"
+                class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2">
+                <i class="fa-solid fa-clock text-blue-500 text-sm"></i>
+                <p class="text-[10px] text-blue-600 font-bold">限時特價即將開始</p>
               </div>
               <div v-if="selectedProduct?.stock > 0 && isLowStock(selectedProduct)" class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2 inline-block">
                 <i class="fa-solid fa-fire-flame-curved mr-1"></i>僅剩 {{ selectedProduct?.stock }} 件
@@ -1562,7 +1670,12 @@
               <button v-if="selectedProduct?.isDelisted" class="flex-1 bg-gray-300 text-gray-500 py-2.5 rounded-lg font-bold cursor-not-allowed text-sm">已下架</button>
               <button v-else-if="selectedProduct?.stock === 0" class="flex-1 bg-gray-300 text-gray-500 py-2.5 rounded-lg font-bold cursor-not-allowed text-sm">目前缺貨</button>
               <button v-else-if="selectedProduct?.finalPrice >= reviewThreshold" @click="requestApproval(selectedProduct);showProductDetail=false" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>申請報價</button>
-              <button v-else @click="addToCart(selectedProduct);showProductDetail=false" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-cart-plus mr-1"></i>加入購物車</button>
+              <button v-else @click="addToCart(selectedProduct);showProductDetail=false"
+                class="flex-1 text-white py-2.5 rounded-lg font-bold text-sm"
+                :class="selectedProduct?.isPromoActive ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600' : 'bg-blue-600 hover:bg-blue-700'">
+                <i class="fa-solid mr-1" :class="selectedProduct?.isPromoActive ? 'fa-bolt' : 'fa-cart-plus'"></i>
+                {{ selectedProduct?.isPromoActive ? '立即搶購特價' : '加入購物車' }}
+              </button>
               <button @click="shareProduct(selectedProduct)" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-share-nodes"></i></button>
             </div>
           </div>
@@ -1996,7 +2109,9 @@
   </div>
 
   <script>
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxoaCqrOXXwU-BcDksbsa2VLZqnU51T-pCNKeckn6zgcnXs4t0Qu1mdlXsmLW1VOilShg/exec';
+    // 🔐 安全設定：GAS_API_URL 與 LIFF_ID 請在部署時替換，勿硬編碼於原始碼
+    // 建議做法：將此檔案部署到 Vercel 時，透過環境變數注入，或在此處填入你自己的值
+    const GAS_API_URL = window.__GAS_API_URL__ || (() => { console.error('GAS_API_URL 未設定'); return ''; })();
     const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
     const app = createApp({
@@ -2201,6 +2316,20 @@
         const lowStockThreshold = computed(() => parseInt(adminSettings.value['限量門檻']) || 5);
         const isLowStock = (p) => p.stock > 0 && p.stock <= lowStockThreshold.value;
 
+        // ✅ 促銷倒數計時
+        const nowTick = ref(Date.now());
+        setInterval(() => { nowTick.value = Date.now(); }, 1000);
+        const getCountdown = (endMs) => {
+          const diff = Math.max(0, endMs - nowTick.value);
+          if (diff === 0) return '已結束';
+          const d = Math.floor(diff / 86400000);
+          const h = Math.floor((diff % 86400000) / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          if (d > 0) return `${d}天${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+          return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        };
+
         // ✅ 2. 首頁過濾關鍵字（從管理後台設定讀取，儲存後立即生效）
         const homeFilterKeywords = computed(() => {
           const raw = (adminSettings.value['首頁過濾關鍵字'] || '').toString();
@@ -2349,20 +2478,30 @@
         };
         const getCatIcon = (name) => catIconMap[name] || '';
 
-        const callAPI = async (action, payload = {}) => {
+        const callAPI = async (action, payload = {}, opts = {}) => {
           try {
             const res = await fetch(GAS_API_URL, {
               method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action, payload })
             });
-            const data = await res.json();
+            let data;
+            try {
+              data = await res.json();
+            } catch(parseErr) {
+              // GAS 回傳非 JSON（例如重新導向、doGet 純文字）
+              // opts.silent = true 時不彈 alert（例如 polling）
+              if (!opts.silent) showAlert('伺服器錯誤', '伺服器回應格式異常，請稍後再試或重新部署 GAS。', 'error');
+              throw parseErr;
+            }
             if (!data.success) throw new Error(data.message);
             if (data.data && data.data.success === false) throw new Error(data.data.message);
             return data.data;
           } catch (e) {
-            // ✅ 2. 若是 0元商品錯誤，不彈網路錯誤 modal，改為靜默拋出讓呼叫方處理
+            if (opts.silent) throw e; // polling 類呼叫靜默失敗
             const msg = e.message || '';
-            if (!msg.includes('無法線上代購') && !msg.includes('無法代購') && !msg.includes('超過系統')) {
+            // 過濾掉 JSON parse 錯誤（已在上面處理）和特定業務錯誤
+            if (!msg.includes('無法線上代購') && !msg.includes('無法代購') && !msg.includes('超過系統')
+                && !msg.includes('Unexpected token') && !msg.includes('is not valid JSON')) {
               showAlert('網路錯誤', msg, 'error');
             }
             throw e;
@@ -2435,7 +2574,7 @@
             isGuest.value = true; showGuestPopup.value = true; loadData(); return;
           }
           try {
-            await liffObj.init({ liffId: "2009521621-rw3SYhn3" });
+            await liffObj.init({ liffId: window.__LIFF_ID__ || '' });
             if (!liffObj.isLoggedIn()) {
               if (liffObj.isInClient()) { liffObj.login(); return; }
               else {
@@ -3018,7 +3157,23 @@
         };
 
         const openAdminProductEditor = (p) => {
-          editProdForm.value = { id: p.id, name: p.name, originalPrice: p.originalPrice, finalPrice: p.finalPrice, categoriesStr: p.categories.join(', '), isDelisted: p.isDelisted };
+          // 解析現有促銷時段
+          const toDatetimeLocal = (ms) => {
+            if (!ms) return '';
+            const d = new Date(ms);
+            const pad = n => String(n).padStart(2,'0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          };
+          editProdForm.value = {
+            id: p.id, name: p.name, originalPrice: p.originalPrice, finalPrice: p.finalPrice,
+            categoriesStr: p.categories.join(', '), isDelisted: p.isDelisted,
+            // 促銷欄位
+            promoStartDt: toDatetimeLocal(p.promoStart || 0),
+            promoEndDt:   toDatetimeLocal(p.promoEnd   || 0),
+            promoPrice:   p.promoPrice || '',
+            isPromoActive: p.isPromoActive,
+            isPromoScheduled: p.isPromoScheduled,
+          };
           showAdminProductEditor.value = true;
         };
 
@@ -3027,7 +3182,39 @@
           loading.value = true;
           const dataToSave = { ...editProdForm.value, categories: editProdForm.value.categoriesStr.split(',').map(c=>c.trim()) };
           await callAPI('adminUpdateProduct', { product: dataToSave, admin: user.value.name });
-          showAdminProductEditor.value = false; loading.value = false; await showAlert('成功','商品已更新','success'); loadData();
+
+          // 促銷時段設定（若有填結束時間）
+          const toTimestamp = (dt) => {
+            if (!dt) return '';
+            const d = new Date(dt);
+            const pad = n => String(n).padStart(2,'0');
+            return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}00`;
+          };
+          if (editProdForm.value.promoEndDt) {
+            await callAPI('setPromotion', {
+              productId: editProdForm.value.id,
+              promoStart: toTimestamp(editProdForm.value.promoStartDt),
+              promoEnd:   toTimestamp(editProdForm.value.promoEndDt),
+              promoPrice: editProdForm.value.promoPrice || '',
+              admin: user.value.name
+            });
+          }
+
+          showAdminProductEditor.value = false; loading.value = false;
+          await showAlert('成功','商品已更新','success'); loadData();
+        };
+
+        const adminClearPromo = async () => {
+          if (!editProdForm.value.id) return;
+          const ok = await showAlert('清除促銷','確定要清除此商品的促銷時段設定嗎？','info', true);
+          if (!ok) return;
+          await callAPI('clearPromotion', { productId: editProdForm.value.id, admin: user.value.name });
+          editProdForm.value.promoStartDt = '';
+          editProdForm.value.promoEndDt   = '';
+          editProdForm.value.promoPrice   = '';
+          editProdForm.value.isPromoActive = false;
+          await showAlert('完成','促銷已清除','success');
+          loadData();
         };
 
         const copyPurchaseInfo = (order) => {
@@ -3177,6 +3364,11 @@
         watch(adminTab, (v) => {
           if (v === 'dashboard') renderRecentChart(allOrders.value);
           if (v === 'stats') loadMonthlyStats();
+          // 離開商品頁時若掃描已完成則停止 polling
+          if (v !== 'products' && scanPollingTimer && scanResult.value?.status !== 'processing' && scanResult.value?.status !== 'collecting') {
+            clearInterval(scanPollingTimer);
+            scanPollingTimer = null;
+          }
         });
 
         const toggleSortOrder = () => { const o = ['default','priceAsc','priceDesc']; sortOrder.value = o[(o.indexOf(sortOrder.value) + 1) % o.length]; };
@@ -3344,7 +3536,7 @@
           if (scanPollingTimer) clearInterval(scanPollingTimer);
           scanPollingTimer = setInterval(async () => {
             try {
-              const st = await callAPI('getScanStatus');
+              const st = await callAPI('getScanStatus', {}, { silent: true }); // 靜默模式，失敗不彈 alert
               scanResult.value = { ...st, message: buildScanMsg(st) };
               if (st.status === 'done' || st.status === 'idle') {
                 clearInterval(scanPollingTimer);
@@ -3355,7 +3547,9 @@
                   await showAlert('掃描完成 🎉', `共新增 ${st.totalNew} 件商品！`, 'success');
                 }
               }
-            } catch(e) {}
+            } catch(e) {
+              // 靜默忽略 polling 錯誤（網路抖動、GAS 暫時不可用）
+            }
           }, 8000);
         };
 
@@ -3381,6 +3575,47 @@
 
         const runContinueScan = runManualScan;
 
+        // ✅ 比對同步功能
+        const syncResult = ref(null);
+        let syncPollingTimer = null;
+
+        const startSyncPolling = () => {
+          if (syncPollingTimer) clearInterval(syncPollingTimer);
+          syncPollingTimer = setInterval(async () => {
+            try {
+              const st = await callAPI('getSyncStatus', {}, { silent: true });
+              syncResult.value = st;
+              if (st.status === 'done' || st.status === 'idle') {
+                clearInterval(syncPollingTimer); syncPollingTimer = null;
+                isBtnLoading.value['manualSync'] = false;
+                if (st.status === 'done') {
+                  await adminLoadData();
+                  await showAlert('比對同步完成 ✅', st.log, 'success');
+                }
+              }
+            } catch(e) {}
+          }, 8000);
+        };
+
+        const runManualSync = async () => {
+          if (isBtnLoading.value['manualSync']) return;
+          isBtnLoading.value['manualSync'] = true;
+          syncResult.value = { status: 'running', log: '🔄 啟動比對同步...' };
+          try {
+            await callAPI('manualSyncProducts', { admin: user.value.name });
+            startSyncPolling();
+          } catch(e) {
+            isBtnLoading.value['manualSync'] = false;
+            syncResult.value = { status: 'idle', log: '啟動失敗，請重試' };
+          }
+        };
+
+        const cancelManualSync = async () => {
+          if (syncPollingTimer) { clearInterval(syncPollingTimer); syncPollingTimer = null; }
+          isBtnLoading.value['manualSync'] = false;
+          await callAPI('cancelScan'); // 重用 cancelScan 清觸發器
+          syncResult.value = { status: 'idle', log: '已取消' };
+        };
         const runDeduplication = async () => {
           const confirmed = await showAlert('去除重複商品', '將掃描試算表中重複的商品編號，保留最後一筆（最新），刪除其餘重複的。確定執行？', 'info', true);
           if (!confirmed) return;
@@ -3435,6 +3670,7 @@
           allProducts, products, homeFilteredProducts, cart, cartSubtotal, cartTotal, cartSavings, handlingFee, handlingFeeRate, vipMarkupDiscount, markupRate, orders, orderFilter, filteredUserOrders,
           addonProducts, addonProductsDisplay, refreshAddonProducts, isRotatingAddon, browseHistory, browseHistoryProducts,
           isLowStock, lowStockThreshold, isPopular, homeFilterKeywords, isHomeFiltered,
+          nowTick, getCountdown,
           hasMoreProducts, displayedCount, isLoadingMore, loadMoreProducts,
           freeShippingThreshold, currentShippingFee, sysAlert, closeAlert, undoToast, undoRemove,
           isGuest, guestBrowsing, showGuestPopup, enterAsGuest, desktopLineId, loginWithLineId, desktopLogout, handleNav, forceInitSpreadsheet, uploadCatIcon,
@@ -3447,7 +3683,7 @@
           adminTab, allOrders, adminStats, adminMembers, systemLogs, selectedOrderIds, batchUpdateStatus, exportCSV, copySelectedOrdersInfo, toggleBlock, setMemberVip, vipColors, getVipColor, getUserVipLevel,
           forceRunScraper, saveAdminSettings, adminUpdateOrderStatus, adminLoadData, copyPurchaseInfo,
           showShippingModal, shippingTrackingCode, promptShipOrder, confirmShipOrder, adminSetTracking, shipNotifyMode, shipMessage, copyShipMessage,
-          adminCategories, saveAdminCategories, showAdminProductEditor, editProdForm, adminProductSearch, adminFilteredProducts, openAdminProductEditor, adminSaveProduct,
+          adminCategories, saveAdminCategories, showAdminProductEditor, editProdForm, adminProductSearch, adminFilteredProducts, openAdminProductEditor, adminSaveProduct, adminClearPromo,
           customProdForm, submitCustomProduct, discountForm, discounts, adminSaveDiscountCode, saveDiscountCodes, deleteDiscount, editingDiscountIdx, editDiscount, cancelEditDiscount,
           toggleSortOrder, getStatusColor, copyText, toggleFavorite, isFavorite, reviewThreshold, requestApproval, favorites,
           monthlyStats, isLoadingStats, latestMonth, totalAllTime, loadMonthlyStats,
@@ -3463,6 +3699,7 @@
           // ✅ 4+5. 批量設定分類、去重
           batchSelectedIds, batchCategoryTarget, applyBatchCategory, batchListUnlist, runDeduplication,
           scanCategoryOptions, scanSelectedCats, scanResult, runManualScan, cancelManualScan, runContinueScan,
+          syncResult, runManualSync, cancelManualSync,
         };
       }
     });
